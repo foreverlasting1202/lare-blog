@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="How training balances knowledge and reasoning, why the same examples can teach more, and how loss weights change what a model learns.">
+  <meta name="author" content="Jiazheng Li, Huaqing Zhang, Jing Xu, Tianle Cai, Jingzhao Zhang">
+  <meta name="theme-color" content="#fcfcf9">
+  <meta name="color-scheme" content="light dark">
+  <meta property="og:title" content="Lare: Can Models Learn to Reason Better With the Same Training Data?">
+  <meta property="og:description" content="How training balances knowledge and reasoning, why the same examples can teach more, and how loss weights change what a model learns.">
+  <meta property="og:type" content="article">
+  <title>Lare: Can Models Learn to Reason Better With the Same Training Data?</title>
+  <link rel="icon" type="image/svg+xml" href="./training-farm-icon.svg">
+  <script>try { const p=localStorage.getItem('lare-theme')||'system';document.documentElement.dataset.theme=p==='system'?(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'):p; } catch {}</script>
+  <link rel="stylesheet" href="./styles.css">
+  <link rel="stylesheet" href="./motion.css">
+  <link rel="stylesheet" href="./history.css">
+  <link rel="stylesheet" href="./reference.css">
+  <link rel="stylesheet" href="./reference-adaptations.css">
+  <script src="./theme.js" defer></script>
+  <script src="./i18n.js" defer data-lare-i18n></script>
+  <script src="./app.js" defer></script>
+  <script src="./animations.js" defer></script>
+  <script src="./data/training-history.js" defer></script>
+  <script src="./history.js" defer></script>
+  <script src="./studies.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to article</a>
+  <div class="reading-progress" aria-hidden="true"><span id="reading-progress"></span></div>
+  <header class="site-header article-navigation">
+    <a class="wordmark" href="__BLOG_URL__" aria-label="Training Farm">
+      <svg viewBox="0 0 26 26" width="26" height="26" aria-hidden="true"><path d="M2 5h22M8 5v17M2 13h12M20 5v17M16 13h8" fill="none" stroke="currentColor" stroke-width="1.7"/></svg>
+      <span>TRAINING FARM</span>
+    </a>
+    <nav aria-label="Main navigation">
+      <a class="nav-blog" href="__BLOG_URL__" aria-current="true">Blog</a>
+      <a class="nav-about" href="__ABOUT_URL__">About Us</a>
+      <span class="language-switch" aria-label="Language"><a href="__ZH_URL__" lang="zh-CN" hreflang="zh-CN" data-language="zh">中文</a><span aria-hidden="true">/</span><a href="__EN_URL__" lang="en" hreflang="en" data-language="en">EN</a></span>
+      <label class="theme-switch" for="site-theme" data-theme-control hidden><span class="sr-only">Color theme</span><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M12 4a8 8 0 0 0 0 16Z" fill="currentColor"/></svg><select id="site-theme" data-theme-select><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select></label>
+    </nav>
+  </header>
+
+  <main id="main" class="article-shell">
+    <header id="top" class="article-header">
+      <a class="back-link" href="__BLOG_URL__">← All posts</a>
+      <div class="article-meta"><span class="article-category">PRETRAINING</span><span class="meta-dot">·</span><time datetime="2026-10">October 2026</time></div>
+      <h1>Lare: Can Models Learn to Reason Better With the Same Training Data?</h1>
+      <p class="article-subtitle">Knowledge (Memorization) vs Reasoning: learning more from the same examples</p>
+      <div class="byline">
+        <p class="author-names"><span>Jiazheng Li<sup>1,2,*</sup></span><span>Huaqing Zhang<sup>1</sup></span><span>Jing Xu<sup>1</sup></span><span>Tianle Cai<sup>2</sup></span><span>Jingzhao Zhang<sup>1,†</sup></span></p>
+        <p class="affiliations"><span><sup>1</sup> Tsinghua University</span><span><sup>2</sup> ByteDance Seed</span></p>
+        <p class="author-roles">* Work done at ByteDance Seed <span>† Corresponding authors</span></p>
+      </div>
+      <div class="article-resources">
+        <a href="https://arxiv.org/abs/2610.32141" target="_blank" rel="noopener noreferrer">Paper <span aria-hidden="true">↗</span></a>
+        <a href="https://anonymous.4open.science/r/Fast-LLM-Pretrain-on-Data-Mixture-by-Loss-Reweighting-F7F5" target="_blank" rel="noopener noreferrer">Training code <span aria-hidden="true">↗</span></a>
+        <a href="#citation">Cite <span aria-hidden="true">↓</span></a>
+      </div>
+    </header>
+
+    <div class="reading-layout">
+      <aside class="article-toc" aria-label="Article contents">
+        <details open id="contents">
+          <summary>ON THIS PAGE <span aria-hidden="true">↗</span></summary>
+          <nav aria-label="On this page">
+            <a href="#overview" aria-current="location">Start here</a>
+            <a href="#forgetting">Learning is not permanent</a>
+            <a href="#two-controls">Give reasoning more weight</a>
+            <a href="#frontier">Is a bigger weight just more data?</a>
+            <a href="#method">Which predictions need more weight?</a>
+            <a href="#dynamics">Choosing a weight in one run</a>
+            <a href="#optimizer-step">What should one update change?</a>
+            <a href="#replication">Which balance of abilities do you want?</a>
+            <a href="#scaling">Reweighting across model sizes</a>
+            <a href="#results">Three subjects, one training run</a>
+            <a href="#scope">What to try in your next run</a>
+            <a href="#citation">Cite this work</a>
+          </nav>
+        </details>
+        <div class="toc-footer"><span class="status-dot"></span> Notes on learning from data<br></div>
+      </aside>
+
+      <article class="article-prose">
+        <section id="overview" class="opening-section" aria-labelledby="opening-heading">
+          <p id="opening-heading">A model can remember a fact and still struggle to work out an answer. We want both: knowledge it can recall, and reasoning it can use to solve a problem. With a fixed training budget, how do we help it learn both?</p>
+          <p>Think of the distinction as Knowledge (Memorization) vs Reasoning: retaining information from what you read, and working through a problem using what you know. These abilities work together. The training question is how to develop one without losing the other.</p>
+          <p>Let’s make that concrete with two piles of data: ordinary text for broad knowledge, and worked math solutions as our reasoning examples. We train a roughly 1.5-billion-parameter model on 26.25 billion text tokens and 3.75 billion tokens of solutions. That is a 30-billion-token budget, split 7:1. We will call the streams K (knowledge) and R (reasoning).</p>
+          <p>Mixing both streams throughout training is a natural starting point. Teaching one first, then the other, is another. To understand what else we can change, we will follow the examples through a training step: which ones arrive, how their losses combine, and how the resulting gradient changes the model.</p>
+          <p><a href="#forgetting">Start at the switch ↓</a></p>
+        </section>
+
+        <section id="forgetting" aria-labelledby="forgetting-heading">
+          <h2 id="forgetting-heading"><span class="section-number">01</span> Learning is not permanent</h2>
+          <p>For the first run, we finish the reasoning examples before switching to ordinary text. At the switch, the model answers 18.50% of GSM8K questions correctly. Will it keep that ability as it learns more knowledge?</p>
+          <p>We track reasoning with GSM8K word problems and broad knowledge with MMLU questions across many subjects. Both tests draw on recall and reasoning; they give us two useful views of the model rather than a clean separation of abilities.</p>
+          <figure class="interactive-figure history-player" id="stage-history" data-history="stage">
+            <h3>What happens after the switch?</h3>
+            <form class="stage-prediction" id="stage-prediction" hidden>
+              <fieldset>
+                <legend>How will the reasoning score change once the model reads only ordinary text?</legend>
+                <div class="prediction-options">
+                  <label><input type="radio" name="math-prediction" value="rise"> Rise</label>
+                  <label><input type="radio" name="math-prediction" value="flat"> Stay flat</label>
+                  <label><input type="radio" name="math-prediction" value="fall"> Fall</label>
+                </div>
+              </fieldset>
+              <input type="hidden" id="stage-prediction-state" value="waiting:">
+              <button type="submit" class="play-button prediction-play" disabled>Reveal the result</button>
+              <p class="prediction-result" role="status"></p>
+            </form>
+            <noscript><p>In the recorded run, GSM8K fell from 18.50% at the switch to 0.76% at the end.</p></noscript>
+            <svg id="stage-history-svg" class="motion-svg history-time-svg" viewBox="0 0 700 390" role="img" aria-label="Knowledge and reasoning during training; drag the shared time cursor to compare their progress."></svg>
+            <div class="playback-controls"><button data-history-play class="play-button" aria-pressed="false" data-after-prediction hidden><span aria-hidden="true">▶</span> Play curves</button><button data-history-reset class="text-button" data-after-prediction hidden>Restart</button><output data-history-time for="stage-history-progress">3.75B tokens</output></div>
+            <label class="sr-only" for="stage-history-progress">Training step to reveal</label><input id="stage-history-progress" data-history-progress type="range" min="0" max="57220" value="7152" step="1" data-after-prediction hidden>
+            <div class="history-phase" data-history-phase>Reasoning stage</div>
+            <div class="history-readouts"><div><span>Reasoning · GSM8K (%)</span><strong data-history-gsm>18.50</strong></div><div><span>Knowledge · MMLU (%)</span><strong data-history-mmlu>27.09</strong></div></div>
+            <div class="history-moments" role="group" aria-label="Training moments" data-after-prediction hidden>
+              <button type="button" data-history-moment="switch" aria-pressed="true">At the switch</button>
+              <button type="button" data-history-moment="staged-end" aria-pressed="false">End of reasoning-first run</button>
+              <button type="button" data-history-moment="reweighted-end" aria-pressed="false">End of mix + 2× weight</button>
+            </div>
+            <div class="segment-control history-run-tabs" role="group" aria-label="Training trajectory to highlight" data-after-prediction hidden><button data-history-run="km" aria-pressed="false"><i class="history-km-dot" aria-hidden="true"></i>Knowledge first</button><button data-history-run="mk" aria-pressed="true"><i class="history-mk-dot" aria-hidden="true"></i>Reasoning first</button><button data-history-run="direct" aria-pressed="false"><i class="legend-baseline" aria-hidden="true"></i>Mix both</button><button data-history-run="fixed2" aria-pressed="false"><i class="legend-fixed" aria-hidden="true"></i>Mix + 2×</button></div>
+            <details class="history-plane-details" data-after-prediction hidden><summary>See how the two abilities move together <span aria-hidden="true">↗</span></summary><svg id="stage-plane-svg" class="motion-svg history-plane-svg" viewBox="0 0 700 285" role="img" aria-label="The selected training run on the knowledge–reasoning plane; drag along the path to compare abilities."></svg><p>Drag along the path: moving up and right means both abilities improve; moving toward one axis shows a trade-off.</p></details>
+            <figcaption>Figure 1 | Make a prediction, then watch what happens after the switch. Once the result is revealed, compare the schedules to see which one keeps both abilities in practice.</figcaption>
+          </figure>
+          <p data-after-prediction hidden>Knowledge training updates the same parameters that learned to reason through the problems. Once the reasoning examples disappear, the objective no longer asks those updates to preserve that skill. Reversing the order changes which ability loses ground: in the knowledge-first run, MMLU falls during the final reasoning stage even as GSM8K improves.</p>
+          <p>The model does not put each newly learned subject into a separate drawer. A training schedule also decides how long a skill has to survive while the model is learning something else.</p>
+          <figure class="schedule-diagram" id="schedule-animation">
+            <h3>Same token budget, three schedules</h3>
+            <div class="schedule-chart" role="img" aria-label="Three 30-billion-token schedules. Reasoning first uses 3.75 billion reasoning tokens followed by 26.25 billion knowledge tokens. Knowledge first reverses that order. Mix both samples knowledge and reasoning at 7 to 1 throughout.">
+              <div class="schedule-legend"><span><i class="schedule-text"></i>Knowledge</span><span><i class="schedule-math"></i>Reasoning</span></div>
+              <div class="schedule-axis"><span>0</span><span>30B tokens →</span></div>
+              <div class="schedule-row">
+                <span>Reasoning first</span>
+                <div class="schedule-bar"><span class="schedule-math">3.75B</span><span class="schedule-text">26.25B</span></div>
+              </div>
+              <div class="schedule-row">
+                <span>Knowledge first</span>
+                <div class="schedule-bar"><span class="schedule-text">26.25B</span><span class="schedule-math">3.75B</span></div>
+              </div>
+              <div class="schedule-row">
+                <span>Mix both</span>
+                <div class="schedule-bar schedule-mixed">7:1 throughout</div>
+              </div>
+            </div>
+            <figcaption>Figure 2 | Equal token totals can hide different learning histories. Both staged schedules use up one subject before switching; mixing keeps both present throughout the same 30B-token budget.</figcaption>
+          </figure>
+          <p>Mixing gives the model repeated opportunities to retain knowledge and practice reasoning. The same reasoning examples are spread across the run. If you want a model to keep using a skill, keep giving it chances to practice that skill while it learns the next one.</p>
+          <p>We now have both subjects present. The next question is how much each should count.</p>
+
+        </section>
+
+        <section id="two-controls" aria-labelledby="controls-heading">
+          <h2 id="controls-heading"><span class="section-number">02</span> Give reasoning more weight</h2>
+          <p>A language model learns by predicting the next token. The loss measures how much probability it gave the token that actually came next. Giving the correct token very little probability produces a large loss. Training combines these losses and uses their gradients to update the model.</p>
+          <div class="explained-equation" id="batch-objective">
+<p class="equation-label">From a prediction to the batch loss</p><div class="math-line" role="group" aria-label="A token loss is minus the log probability of the observed token given its preceding context."><math display="block"><mrow><msub><mi>q</mi><mi>k</mi></msub><mo>=</mo><mo>−</mo><mi mathvariant="normal">log</mi><msub><mi>p</mi><mi>θ</mi></msub><mrow><mo>(</mo><msub><mi>x</mi><mi>k</mi></msub><mo>|</mo><msub><mi>x</mi><mrow><mo>&lt;</mo><mi>k</mi></mrow></msub><mo>)</mo></mrow></mrow></math></div><p>Here <math display="inline" class="inline-math"><mrow><msub><mi>x</mi><mi>k</mi></msub></mrow></math> is the observed next token, <math display="inline" class="inline-math"><mrow><msub><mi>x</mi><mrow><mo>&lt;</mo><mi>k</mi></mrow></msub></mrow></math> is its preceding context, and <math display="inline" class="inline-math"><mrow><mi>θ</mi></mrow></math> denotes the model parameters. Averaging these token losses within each domain gives <math display="inline" class="inline-math"><mrow><msub><mi>ℓ</mi><mi>i</mi></msub></mrow></math>.</p><div class="math-line" role="group" aria-label="The batch loss sums each domain’s target share times its weight times its mean loss."><math display="block"><mrow><mi>L</mi><mo>=</mo><munder><mo>∑</mo><mi>i</mi></munder><msub><mi>π</mi><mi>i</mi></msub><msub><mi>w</mi><mi>i</mi></msub><msub><mi>ℓ</mi><mi>i</mi></msub></mrow></math></div><dl class="equation-key"><div><dt><math><msub><mi>π</mi><mi>i</mi></msub></math></dt><dd>Fraction of scored prediction targets from domain <math display="inline" class="inline-math"><mrow><mi>i</mi></mrow></math>; these shares sum to one.</dd></div><div><dt><math><msub><mi>ℓ</mi><mi>i</mi></msub></math></dt><dd>Mean unweighted loss on those targets.</dd></div><div><dt><math><msub><mi>w</mi><mi>i</mi></msub></math></dt><dd>Coefficient applied to that domain’s loss. Equal weighting sets every coefficient to one.</dd></div></dl>
+          </div>
+          <p>Consider a toy batch with seven knowledge-text predictions and one reasoning-example prediction, all scored. Write their domain mean losses as <math display="inline" class="inline-math"><mrow><msub><mi>ℓ</mi><mi mathvariant="normal">K</mi></msub></mrow></math> and <math display="inline" class="inline-math"><mrow><msub><mi>ℓ</mi><mi mathvariant="normal">R</mi></msub></mrow></math>. We can give the reasoning prediction twice the weight of a knowledge prediction while keeping the average coefficient at one.</p>
+          <div class="explained-equation" id="twice-the-weight">
+<p class="equation-label">Equal weights</p><div class="math-line" role="group" aria-label="Equal weighting averages seven knowledge losses and one reasoning loss over eight targets."><math display="block"><mrow><msub><mi>L</mi><mn>1</mn></msub><mo>=</mo><mfrac><mrow><mn>7</mn><msub><mi>ℓ</mi><mi mathvariant="normal">K</mi></msub><mo>+</mo><msub><mi>ℓ</mi><mi mathvariant="normal">R</mi></msub></mrow><mn>8</mn></mfrac></mrow></math></div><p class="equation-label">Reasoning counts twice as much</p><div class="math-line" role="group" aria-label="Doubling the relative reasoning weight gives seven times the knowledge mean loss plus twice the reasoning mean loss, divided by nine."><math display="block"><mrow><msub><mi>L</mi><mn>2</mn></msub><mo>=</mo><mfrac><mrow><mn>7</mn><msub><mi>ℓ</mi><mi mathvariant="normal">K</mi></msub><mo>+</mo><mn>2</mn><msub><mi>ℓ</mi><mi mathvariant="normal">R</mi></msub></mrow><mn>9</mn></mfrac></mrow></math></div><p>The denominator is 9 because the eight targets now carry <math display="inline" class="inline-math"><mrow><mn>7</mn><mo>+</mo><mn>2</mn></mrow></math> units of relative weight. In the batch-loss formula above, this corresponds to <math display="inline" class="inline-math"><mrow><msub><mi>w</mi><mi mathvariant="normal">K</mi></msub><mo>=</mo><mrow><mn>8</mn><mo>/</mo><mn>9</mn></mrow></mrow></math> and <math display="inline" class="inline-math"><mrow><msub><mi>w</mi><mi mathvariant="normal">R</mi></msub><mo>=</mo><mrow><mn>16</mn><mo>/</mo><mn>9</mn></mrow></mrow></math>. Their target-weighted mean is one, and the relative ratio is <math display="inline" class="inline-math"><mrow><mrow><msub><mi>w</mi><mi mathvariant="normal">R</mi></msub><mo>/</mo><msub><mi>w</mi><mi mathvariant="normal">K</mi></msub></mrow><mo>=</mo><mn>2</mn></mrow></math>. The examples and the 7:1 target count have stayed fixed.</p>
+          </div>
+          <p>Keep the stream fixed, train with several reasoning weights, and put the final models on a chart. Right means better reasoning performance on GSM8K. Up means better knowledge performance on MMLU. Moving up and right would mean improving both.</p>
+          <figure class="interactive-figure" id="exposure-explorer">
+            <h3>Turn up the reasoning weight</h3>
+            <div class="segment-control recipe-tabs" role="group" aria-label="Training objective">
+              <button type="button" data-recipe="direct" aria-pressed="false">Direct mixture</button>
+              <button type="button" data-recipe="fixed" aria-pressed="true">Fixed reweighting</button>
+              <button type="button" data-recipe="adaptive" aria-pressed="false">Learn the weights</button>
+            </div>
+            <div class="exposure-diagram">
+              <div class="bar-label"><span>Sampled tokens</span><span class="bar-annotation">7:1 · unchanged</span></div>
+              <div class="domain-bar exposure-bar" role="img" aria-label="Sampled tokens: 87.5 percent knowledge and 12.5 percent reasoning"><span class="knowledge" style="width:87.5%">Knowledge <span>26.25B</span></span><span class="math" style="width:12.5%">3.75B</span></div>
+              <div class="diagram-connector"><span></span><span>same examples · different loss coefficients</span><span></span></div>
+              <div class="bar-label"><span>Relative loss coefficients</span><output id="weight-label">K : R = 1 : 1</output></div>
+              <div class="coefficient-row"><div class="coefficient-box knowledge-box"><span>Knowledge</span><strong>×1</strong></div><div class="coefficient-box math-box"><span>Reasoning</span><strong id="math-multiplier">×1</strong></div></div>
+            </div>
+            <div class="weight-control" id="weight-control"><label for="weight-slider">Reasoning multiplier <span>compare loss weights</span></label><input id="weight-slider" type="range" min="0" max="4" step="1" value="0" aria-valuetext="1 time"><div class="range-labels" aria-hidden="true"><span>1×</span><span>2×</span><span>3×</span><span>4×</span><span>7×</span></div></div>
+            <svg id="exposure-score-plot" class="motion-svg exposure-score-plot" viewBox="0 0 600 272" role="img" aria-label="Knowledge and reasoning scores at different reasoning loss weights: MMLU and GSM8K"></svg>
+            <div class="measured-result" aria-live="polite" aria-atomic="true"><div><span id="recipe-description">Equal loss weights</span><small>Same data · compare final scores</small></div><div><span>MMLU</span><strong id="explorer-mmlu">31.40</strong></div><div><span>GSM8K</span><strong id="explorer-gsm">27.67</strong></div></div>
+            <p class="figure-note" id="recipe-note">Reasoning loss weight is 1×. Both streams stay present throughout training.</p>
+            <figcaption>Figure 3 | At 2× reasoning weight, the point moves up and right: both scores improve. At 7×, further reasoning gains come with lower MMLU. Every dot uses the same 7:1 data mix and 30B-token budget.</figcaption>
+          </figure>
+          <p>Moving from 1× to 2× takes us up and right. Reasoning improves while knowledge performance also rises. The change comes from how the existing examples enter the training objective. We have not added another worked solution.</p>
+          <p>Keep turning the weight up and the pattern changes. At 7×, reasoning improves further, but MMLU is below its value at 2×. Now we are exchanging some knowledge performance for reasoning. The interesting part is that the equal-weight starting point left room to improve both.</p>
+        </section>
+
+        <section id="frontier" aria-labelledby="frontier-heading">
+          <h2 id="frontier-heading"><span class="section-number">03</span> Is a bigger weight just more data?</h2>
+          <p>At first glance, doubling the reasoning loss weight sounds like showing the model twice as many reasoning examples. Both give reasoning more influence. But sampling more reasoning data changes the batch and, with a fixed token budget, leaves less room for knowledge text. Raising the weight makes the reasoning examples already in the batch count more.</p>
+          <p>A small example makes the distinction concrete. Reading two independently sampled solutions gives two observations to learn from. Reading one solution with twice the weight still gives one observation. Its quirks get amplified along with its useful signal. This matters when updates are estimated from finite batches.</p>
+          <div class="explained-equation" id="sampling-and-weighting">
+<p>For a compact comparison, consider an SGD update at the same model parameters, using a batch of <math display="inline" class="inline-math"><mrow><mi>B</mi></mrow></math> independent examples. Let <math display="inline" class="inline-math"><mrow><msub><mi>m</mi><mi>i</mi></msub></mrow></math> be the fraction drawn from domain <math display="inline" class="inline-math"><mrow><mi>i</mi></mrow></math>, and <math display="inline" class="inline-math"><mrow><msup><msub><mover><mi>g</mi><mo>^</mo></mover><mi>i</mi></msub><mrow><mo>(</mo><mi>n</mi><mo>)</mo></mrow></msup></mrow></math> its average gradient estimated from <math display="inline" class="inline-math"><mrow><mi>n</mi></mrow></math> examples. A gradient is the derivative of the loss with respect to the model parameters; <math display="inline" class="inline-math"><mrow><mi>η</mi></mrow></math> is the learning rate.</p><p class="equation-label">Change the sampled fractions to <math display="inline" class="inline-math"><mrow><msup><mi>m</mi><mo>′</mo></msup></mrow></math></p><div class="math-line" role="group" aria-label="Changing the mixture changes both the domain coefficient and the sample count in its gradient estimate."><math display="block"><mrow><mo>Δ</mo><mi>θ</mi><mo>=</mo><mo>−</mo><mi>η</mi><munder><mo>∑</mo><mi>i</mi></munder><msup><msub><mi>m</mi><mi>i</mi></msub><mo>′</mo></msup><msup><msub><mover><mi>g</mi><mo>^</mo></mover><mi>i</mi></msub><mrow><mo>(</mo><mrow><mi>B</mi><msup><msub><mi>m</mi><mi>i</mi></msub><mo>′</mo></msup></mrow><mo>)</mo></mrow></msup></mrow></math></div><p class="equation-label">Keep the fractions <math display="inline" class="inline-math"><mrow><mi>m</mi></mrow></math> and change the weights <math display="inline" class="inline-math"><mrow><mi>w</mi></mrow></math></p><div class="math-line" role="group" aria-label="Changing the weights scales each gradient estimate while keeping its sample count fixed."><math display="block"><mrow><mo>Δ</mo><mi>θ</mi><mo>=</mo><mo>−</mo><mi>η</mi><munder><mo>∑</mo><mi>i</mi></munder><msub><mi>m</mi><mi>i</mi></msub><msub><mi>w</mi><mi>i</mi></msub><msup><msub><mover><mi>g</mi><mo>^</mo></mover><mi>i</mi></msub><mrow><mo>(</mo><mrow><mi>B</mi><msub><mi>m</mi><mi>i</mi></msub></mrow><mo>)</mo></mrow></msup></mrow></math></div><p>In the first line, <math display="inline" class="inline-math"><mrow><msub><mi>m</mi><mi>i</mi></msub></mrow></math> changes in two places, including inside the sample count. In the second, <math display="inline" class="inline-math"><mrow><msub><mi>w</mi><mi>i</mi></msub></mrow></math> multiplies the gradient estimated from the existing examples. Even choosing <math display="inline" class="inline-math"><mrow><msup><msub><mi>m</mi><mi>i</mi></msub><mo>′</mo></msup><mo>=</mo><msub><mi>m</mi><mi>i</mi></msub><msub><mi>w</mi><mi>i</mi></msub></mrow></math>, when those fractions sum to one, only matches the expected SGD update. It leaves different sample counts and therefore different gradient noise. AdamW and Muon further transform the gradients; these two lines describe the SGD case.</p>
+          </div>
+          <p>The gray points below change the data allocation from 7:1 toward 1:1. The colored points keep an allocation fixed and change the loss weight. They show the models reached by those two choices under the same total training budget.</p>
+          <figure class="interactive-figure motion-figure" id="frontier-animation">
+            <h3>Two ways to move on the same chart</h3>
+            <p class="figure-intro">Choose a data mix, then drag the highlighted point. Compare its direction with the gray path: does more weight do the same thing as more data?</p>
+            <div class="frontier-settings"><label for="frontier-mixture">Fixed exposure <select id="frontier-mixture"><option value="7">Knowledge : Reasoning = 7 : 1</option><option value="3">Knowledge : Reasoning = 3 : 1</option></select></label><button id="frontier-adaptive" class="outline-button" aria-pressed="false">Show LARE</button></div>
+            <div class="motion-legend"><span><i class="legend-remix"></i>Direct mixtures</span><span><i class="legend-fixed"></i>Fixed loss weights</span><span><i class="legend-adaptive"></i>LARE</span></div>
+            <svg id="frontier-svg" class="motion-svg frontier-svg" viewBox="0 0 700 378" role="img" aria-label="MMLU versus GSM8K with draggable selection among measured fixed-weight endpoints"></svg>
+            <div class="frontier-drag-caption"><span aria-hidden="true">↔</span> Drag across the plotted points; selection snaps to a measured run.</div>
+            <div class="playback-controls"><button id="frontier-play" class="play-button" aria-pressed="false"><span aria-hidden="true">▶</span> Play weight sweep</button><output id="frontier-weight-label" for="frontier-weight">Loss ratio K : R = 1 : 2</output></div>
+            <label class="sr-only" for="frontier-weight">Select a measured reasoning loss multiplier</label><input id="frontier-weight" type="range" min="0" max="4" step="1" value="1"><div class="range-labels" aria-hidden="true"><span>1×</span><span>2×</span><span>3×</span><span>4×</span><span>7×</span></div>
+            <div class="frontier-result" aria-live="polite"><div><span id="frontier-selection">Fixed 1:2 · 7:1 exposure</span><small id="frontier-delta">Both capabilities improve over direct mixing.</small></div><div><span>MMLU</span><strong id="frontier-mmlu">32.27</strong></div><div><span>GSM8K</span><strong id="frontier-gsm">38.59</strong></div></div>
+            <figcaption>Figure 4 | Data allocation and loss weighting lead to different models. Gray points vary the mix; colored points keep a mix fixed. At both 7:1 and 3:1, a 2× reasoning weight improves both scores over equal weighting.</figcaption>
+          </figure>
+          <p>From a 3:1 mix to a 1:1 mix, the gray path moves right and down: more reasoning data comes with lower knowledge performance. At the fixed 3:1 mix, doubling the reasoning weight moves right and slightly up. Choosing the data ratio still leaves another way to adjust what the model learns.</p>
+          <p>These controls answer different practical questions. The mixture decides which examples get a place in the budget. The weights decide how strongly the predictions on those examples enter the loss. It is useful to be able to adjust either one without automatically committing to the other.</p>
+          <p>There is a catch. Each dot required a training run. A good weight found this way costs a sweep, and the answer may change when the model or data changes. Could the losses we already measure during training help choose it?</p>
+
+        </section>
+
+        <section id="method" aria-labelledby="method-heading">
+          <h2 id="method-heading"><span class="section-number">04</span> Which predictions need more weight?</h2>
+          <p>A tempting rule is to give more weight to whichever subject has the larger loss. That sounds like spending more time on a student’s weakest subject. But next-token loss is a measure of predictability, and different kinds of text can be predictable to very different degrees.</p>
+          <p>A worked solution may contain repeated steps and a narrow set of expressions. Ordinary text can contain names, quotations, and many plausible continuations. A larger loss on one source does not by itself tell us that emphasizing it will improve the skill we care about. And a low loss on worked solutions does not mean the model can solve a new problem correctly.</p>
+          <p>There is another way to use loss: as a rough clue to the scale of the gradients a domain produces. A small noisy classification problem makes this concrete.</p>
+          <div class="explained-equation" id="noisy-classification-model">
+            <p class="equation-label">A classifier with noisy labels</p>
+            <p>Draw a Gaussian input <math display="inline" class="inline-math"><mi>x</mi><mo>∼</mo><mi>𝒩</mi><mo>(</mo><mn>0</mn><mo>,</mo><msub><mi>I</mi><mi>d</mi></msub><mo>)</mo></math> and give it the clean label <math display="inline" class="inline-math"><msub><mi>y</mi><mn>0</mn></msub><mo>=</mo><mi mathvariant="normal">sign</mi><mo>(</mo><msup><mi>u</mi><mo>⊤</mo></msup><mi>x</mi><mo>)</mo></math>, where <math display="inline" class="inline-math"><mi>u</mi></math> is a fixed unit vector. Flip each label independently with probability <math display="inline" class="inline-math"><mi>ρ</mi><mo>∈</mo><mo>(</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo>/</mo><mn>2</mn><mo>)</mo></math> to obtain <math display="inline" class="inline-math"><mi>y</mi></math>. The logistic classifier and its average loss are:</p>
+            <div class="math-line" role="group" aria-label="The logistic classifier predicts the probability of class plus one from the input and its parameter vector theta."><math display="block"><mrow><msub><mi>p</mi><mi>θ</mi></msub><mo>(</mo><mi>y</mi><mo>=</mo><mn>1</mn><mo>|</mo><mi>x</mi><mo>)</mo></mrow><mo>=</mo><mfrac><mn>1</mn><mrow><mn>1</mn><mo>+</mo><msup><mi>e</mi><mrow><mo>−</mo><msup><mi>θ</mi><mo>⊤</mo></msup><mi>x</mi></mrow></msup></mrow></mfrac></math></div>
+            <div class="math-line" role="group" aria-label="The average logistic loss is the expectation of log of one plus exp of minus y times theta transpose x."><math display="block"><mrow><mi>ℓ</mi><mo>(</mo><mi>θ</mi><mo>)</mo></mrow><mo>=</mo><msub><mi>𝔼</mi><mrow><mi>x</mi><mo>,</mo><mi>y</mi></mrow></msub><mo>[</mo><mi mathvariant="normal">log</mi><mo>(</mo><mn>1</mn><mo>+</mo><msup><mi>e</mi><mrow><mo>−</mo><mi>y</mi><msup><mi>θ</mi><mo>⊤</mo></msup><mi>x</mi></mrow></msup><mo>)</mo><mo>]</mo></math></div>
+            <p>The learned vector <math display="inline" class="inline-math"><mi>θ</mi></math> sets the classifier’s boundary and confidence; the expectation averages over inputs and label flips.</p>
+          </div>
+          <p>At the optimum, in the small-noise limit <math display="inline" class="inline-math"><mi>ρ</mi><mo>→</mo><mn>0</mn></math> and for fixed dimension <math display="inline" class="inline-math"><mi>d</mi><mo>≥</mo><mn>2</mn></math>, the root-mean-square gradient grows with the square root of the optimal loss. An inverse-square-root weight offsets that scale. This gives us a rule to try on language models without measuring gradient norms for every domain.</p>
+          <div class="explained-equation" id="loss-gradient-scale">
+<p class="equation-label">The scaling that motivates the exponent</p><div class="math-line" role="group" aria-label="In the toy model near its optimum, the weighted gradient RMS scales as the weight times the square root of the optimal loss."><math display="block"><mrow><mi mathvariant="normal">RMS</mi><mrow><mo>(</mo><msub><mi>w</mi><mi>i</mi></msub><msub><mi>g</mi><mi>i</mi></msub><mo>)</mo></mrow><mo>∝</mo><msub><mi>w</mi><mi>i</mi></msub><msqrt><msup><msub><mi>ℓ</mi><mi>i</mi></msub><mo>⋆</mo></msup></msqrt></mrow></math></div><div class="math-line" role="group" aria-label="An inverse-square-root loss weight offsets that gradient scale."><math display="block"><mrow><msub><mi>w</mi><mi>i</mi></msub><mo>∝</mo><mfrac><mn>1</mn><msqrt><msup><msub><mi>ℓ</mi><mi>i</mi></msub><mo>⋆</mo></msup></msqrt></mfrac></mrow></math></div><p>Here <math display="inline" class="inline-math"><mrow><msub><mi>g</mi><mi>i</mi></msub></mrow></math> is a per-example gradient and <math display="inline" class="inline-math"><mrow><msup><msub><mi>ℓ</mi><mi>i</mi></msub><mo>⋆</mo></msup></mrow></math> is the optimal loss in the toy model. RMS means root-mean-square magnitude. The scaling suppresses comparable domain constants and dimensions. Training cannot observe <math display="inline" class="inline-math"><mrow><msup><msub><mi>ℓ</mi><mi>i</mi></msub><mo>⋆</mo></msup></mrow></math>, so we use a smoothed current loss as a practical proxy.</p>
+          </div>
+          <p>The rule is easy to calculate. Smooth each domain’s recent unweighted losses, take the reciprocal of its square root, and normalize the resulting weights so their average across prediction targets is one. We call this LARE, short for Loss-Adaptive Reweighting under fixed Exposure.</p>
+          <div class="explained-equation" id="adaptive-weight-equation">
+<p class="equation-label">Compute a score, then normalize</p><div class="math-line" role="group" aria-label="The raw score is one divided by the square root of the smoothed unweighted loss plus epsilon."><math display="block"><mrow><msub><mi>r</mi><mi>i</mi></msub><mo>=</mo><mfrac><mn>1</mn><msqrt><mrow><msub><mover><mi>ℓ</mi><mo>^</mo></mover><mi>i</mi></msub><mo>+</mo><mi>ε</mi></mrow></msqrt></mfrac></mrow></math></div><div class="math-line" role="group" aria-label="Normalize each raw score by the target-share-weighted sum of scores across all domains."><math display="block"><mrow><msub><mi>w</mi><mi>i</mi></msub><mo>=</mo><mfrac><msub><mi>r</mi><mi>i</mi></msub><mrow><munder><mo>∑</mo><mi>j</mi></munder><msub><mover><mi>π</mi><mo>^</mo></mover><mi>j</mi></msub><msub><mi>r</mi><mi>j</mi></msub></mrow></mfrac></mrow></math></div><dl class="equation-key"><div><dt><math><msub><mover><mi>ℓ</mi><mo>^</mo></mover><mi>i</mi></msub></math></dt><dd>Smoothed mean loss before applying any domain weight.</dd></div><div><dt><math><msub><mover><mi>π</mi><mo>^</mo></mover><mi>i</mi></msub></math></dt><dd>Smoothed fraction of valid prediction targets; the fractions sum to one.</dd></div><div><dt><math><mi>ε</mi></math></dt><dd>A small positive constant to keep the denominator away from zero.</dd></div></dl><div class="math-line" role="group" aria-label="The mean weight across prediction targets stays at one."><math display="block"><mrow><munder><mo>∑</mo><mi>i</mi></munder><msub><mover><mi>π</mi><mo>^</mo></mover><mi>i</mi></msub><msub><mi>w</mi><mi>i</mi></msub><mo>=</mo><mn>1</mn></mrow></math></div><p>Every domain uses the same denominator. It preserves the relative weights while fixing their target-weighted mean. After warmup, statistics from the current step determine the next step’s coefficients.</p>
+          </div>
+          <p>For our knowledge and reasoning streams, the shared normalization cancels when we divide the two weights. Here, reasoning loss means next-token loss on the worked solutions. This makes the direction of the rule especially clear.</p>
+          <div class="explained-equation" id="weight-ratio-example">
+<div class="math-line" role="group" aria-label="The reasoning-to-knowledge weight ratio is the square root of knowledge loss plus epsilon divided by reasoning loss plus epsilon."><math display="block"><mrow><mfrac><msub><mi>w</mi><mi mathvariant="normal">R</mi></msub><msub><mi>w</mi><mi mathvariant="normal">K</mi></msub></mfrac><mo>=</mo><msqrt><mfrac><mrow><msub><mover><mi>ℓ</mi><mo>^</mo></mover><mi mathvariant="normal">K</mi></msub><mo>+</mo><mi>ε</mi></mrow><mrow><msub><mover><mi>ℓ</mi><mo>^</mo></mover><mi mathvariant="normal">R</mi></msub><mo>+</mo><mi>ε</mi></mrow></mfrac></msqrt></mrow></math></div><p class="equation-label">Knowledge loss 4, reasoning loss 1</p><div class="math-line" role="group" aria-label="For knowledge loss four and reasoning loss one, the reasoning weight is approximately twice the knowledge weight."><math display="block"><mrow><mfrac><msub><mi>w</mi><mi mathvariant="normal">R</mi></msub><msub><mi>w</mi><mi mathvariant="normal">K</mi></msub></mfrac><mo>≈</mo><msqrt><mfrac><mn>4</mn><mn>1</mn></mfrac></msqrt><mo>=</mo><mn>2</mn></mrow></math></div><p>The raw scores are 0.5 and 1, so the reasoning weight is twice the knowledge weight. In our earlier toy batch with seven knowledge targets and one reasoning target, normalization gives weights of about 0.889 and 1.778. Choose “Lower reasoning loss” below and check that the relative weight is 2×.</p>
+          </div>
+          <figure class="interactive-figure rule-explorer" id="controller-animation">
+            <h3>Give the rule two losses</h3>
+            <p class="figure-intro">The sliders supply example losses. The values on the right are the weights the rule computes.</p>
+            <div class="controller-presets" role="group" aria-label="Example domain loss settings"><button data-loss-preset="equal" aria-pressed="true">Equal losses</button><button data-loss-preset="math" aria-pressed="false">Lower reasoning loss</button><button data-loss-preset="knowledge">Lower knowledge loss</button></div>
+            <svg id="controller-svg" class="motion-svg controller-svg" viewBox="0 0 700 320" role="group" aria-label="A draggable inverse-square-root curve connected to a live normalization diagram"></svg>
+            <p class="controller-drag-caption">Drag the points or use the sliders.</p>
+            <div class="loss-sliders"><div><label for="knowledge-loss"><span class="domain-dot knowledge-dot"></span> Knowledge loss <output id="knowledge-loss-value" for="knowledge-loss">2.00</output></label><input type="range" id="knowledge-loss" min="0.2" max="6" step="0.05" value="2"></div><div><label for="math-loss"><span class="domain-dot math-dot"></span> Reasoning loss <output id="math-loss-value" for="math-loss">2.00</output></label><input type="range" id="math-loss" min="0.2" max="6" step="0.05" value="2"></div></div>
+            <div class="rule-output" aria-live="polite" aria-atomic="true"><div><span>Knowledge weight</span><strong id="knowledge-weight">1.000</strong></div><div><span>Reasoning weight</span><strong id="math-weight">1.000</strong></div><div><span>Relative R / K</span><strong id="relative-weight">1.00<span>×</span></strong></div></div>
+            <div class="bar-label"><span>Share of weighted coefficients · <math display="inline" class="inline-math"><mrow><msub><mover><mi>π</mi><mo>^</mo></mover><mi>i</mi></msub><msub><mi>w</mi><mi>i</mi></msub></mrow></math></span><span id="normalization-check">Weighted mean = 1.000</span></div>
+            <div class="domain-bar influence-bar" role="img" id="influence-bar" aria-label="Normalized coefficient shares"><span id="knowledge-influence" class="knowledge" style="width:87.5%">87.5%</span><span id="math-influence" class="math" style="width:12.5%">12.5%</span></div>
+            <p class="figure-note">The calculator uses the same toy batch as before: seven knowledge prediction targets for every reasoning target.</p>
+            <figcaption>Figure 5 | Keep knowledge loss fixed and lower reasoning loss. The reasoning weight rises, while the average coefficient stays at one. These sliders illustrate how the rule reacts to losses; they do not predict benchmark scores.</figcaption>
+          </figure>
+          <p>Notice the direction. Holding knowledge loss fixed, lowering reasoning loss raises its relative weight. The rule compensates for different gradient scales using training losses. Whether that compensation improves reasoning is something we measure separately on held-out problems.</p>
+          <p>Normalization keeps the average coefficient at one, so increasing the reasoning coefficient also adjusts the knowledge coefficient. It gives us a consistent way to express the balance. The final parameter update still depends on the gradients and the optimizer.</p>
+          <p>When using the rule in training, average each domain’s unweighted loss over recent batches so that one unusual batch does not swing the weights. Count only predictions that contribute to the loss. This keeps the running statistics aligned with the objective being optimized.</p>
+        </section>
+
+        <section id="dynamics" aria-labelledby="dynamics-heading">
+          <h2 id="dynamics-heading"><span class="section-number">05</span> Choosing a weight in one run</h2>
+          <p>Now let the rule choose weights throughout a real run. During learning-rate warmup, all coefficients stay at one while loss statistics accumulate. After warmup, the smoothed losses set the weights for the next update. The data mixture stays at 7:1 throughout.</p>
+          <p>The bottom panel records the reasoning-to-knowledge weight ratio. The upper panels track the two capabilities. On the same time axis, we can watch the rule choose a balance and see what the model learns along the way.</p>
+          <figure class="interactive-figure history-player" id="adaptive-history" data-history="adaptive">
+            <h3>See where the weight settles</h3>
+            <p class="figure-intro">Use the comparison menu to put a fixed-weight run alongside the automatic one.</p>
+            <div class="history-comparison"><label for="history-reference">Compare LARE with <select id="history-reference"><option value="direct">Direct mixture</option><option value="fixed2" selected>Fixed 1:2</option><option value="fixed3">Fixed 1:3</option><option value="fixed4">Fixed 1:4</option><option value="fixed7">Fixed 1:7</option></select></label><div class="history-legend"><span><i class="history-lare-dot"></i>LARE</span><span><i class="legend-baseline"></i>Reference</span></div></div>
+            <svg id="adaptive-history-svg" class="motion-svg history-time-svg" viewBox="0 0 700 500" role="img" aria-label="Knowledge, reasoning and their relative loss weight during training."></svg>
+            <div class="playback-controls"><button data-history-play class="play-button" aria-pressed="false"><span aria-hidden="true">▶</span> Play adaptation</button><button data-history-reset class="text-button">Restart</button><output data-history-time for="adaptive-history-progress">10.00B tokens</output></div>
+            <label class="sr-only" for="adaptive-history-progress">Training step to reveal</label><input id="adaptive-history-progress" data-history-progress data-initial-tokens="10" type="range" min="0" max="57220" value="19073" step="1">
+            <div class="history-phase" data-history-phase>Warmup</div>
+            <div class="history-readouts history-readouts-three"><div><span>LARE MMLU</span><strong data-history-mmlu>—</strong><small data-history-reference-mmlu></small></div><div><span>LARE GSM8K</span><strong data-history-gsm>—</strong><small data-history-reference-gsm></small></div><div><span>Weight R / K</span><strong data-history-ratio>—</strong></div></div>
+            <figcaption>Figure 6 | Read the three panels together: which weight is chosen, and what happens to knowledge and reasoning? A settled weight is useful only when the abilities you care about improve with it.</figcaption>
+          </figure>
+          <p>The ratio moves above two after warmup and ends at 2.41. This puts it near the useful region we found by hand. The final scores are 32.24 on MMLU and 39.80 on GSM8K, close to the fixed 2× run’s 32.27 and 38.59.</p>
+          <p>Use the fixed 2× run as a reference. The question is whether an automatic rule can reach a useful balance without trying several weights in separate runs. That makes adaptation valuable when the cost of a sweep is high; the benchmark curves still tell us whether the chosen balance is useful.</p>
+
+        </section>
+
+        <section id="optimizer-step" aria-labelledby="optimizer-step-heading">
+<h2 id="optimizer-step-heading"><span class="section-number">06</span> What should one update change?</h2>
+          <p>We have followed our examples into a weighted loss. Differentiating it gives a gradient. There is one more decision before the model changes: how should the optimizer turn that gradient into a step?</p>
+          <p>Look inside one linear layer. Its input <math display="inline" class="inline-math"><mrow><mi>x</mi></mrow></math> is an activation vector from the preceding computation, and its output is <math display="inline" class="inline-math"><mrow><mi>y</mi></mrow></math>. Holding the input fixed for this step, changing the weight matrix by <math display="inline" class="inline-math"><mrow><mo>Δ</mo><mi>W</mi></mrow></math> changes the output by:</p>
+          <div class="explained-equation" id="activation-change"><div class="math-line" role="group" aria-label="A linear layer has output y equals W x. With x fixed, the output change is delta W times x."><math display="block"><mrow><mi>y</mi><mo>=</mo><mi>W</mi><mi>x</mi><mspace width="2em"/><mo>Δ</mo><mi>y</mi><mo>=</mo><mo>Δ</mo><mi>W</mi><mi>x</mi></mrow></math></div></div>
+          <p>A scalar example makes the issue visible. A weight change of 0.01 gives an output change of 0.01 when the input is 1, but 0.10 when the input is 10. To keep the output change at 0.01 in the second case, the weight should move by only 0.001. The same parameter step can have a very different effect.</p>
+          <p>ActGD, short for Activation Gradient Descent, takes this view into the optimizer. It uses the scale and correlations of a layer’s inputs to construct an update, then normalizes each output row separately.</p>
+          <p>Let <math display="inline" class="inline-math"><mrow><mi>G</mi><mo>=</mo><msub><mo>∇</mo><mi>W</mi></msub><mi>L</mi></mrow></math> be the gradient of our weighted loss with respect to this layer’s weights. For <math display="inline" class="inline-math"><mrow><mi>n</mi></mrow></math> input vectors, collect their uncentered second moment in <math display="inline" class="inline-math"><mrow><mi>C</mi></mrow></math>:</p>
+          <div class="explained-equation" id="actgd-update"><div class="math-line" role="group" aria-label="C is the mean outer product of the layer input vectors."><math display="block"><mrow><mi>C</mi><mo>=</mo><mfrac><mn>1</mn><mi>n</mi></mfrac><munderover><mo>∑</mo><mrow><mi>k</mi><mo>=</mo><mn>1</mn></mrow><mi>n</mi></munderover><msub><mi>x</mi><mi>k</mi></msub><msup><msub><mi>x</mi><mi>k</mi></msub><mrow><mo>⊤</mo></mrow></msup></mrow></math></div>
+          <p>The diagonal of <math display="inline" class="inline-math"><mrow><mi>C</mi></mrow></math> records input scales; the off-diagonal entries capture how coordinates vary together. For an invertible <math display="inline" class="inline-math"><mrow><mi>C</mi></mrow></math>, the basic ActGD step for output row <math display="inline" class="inline-math"><mrow><mi>j</mi></mrow></math> is:</p>
+          <div class="math-line" role="group" aria-label="The update to row j is minus the learning rate times G j C inverse, divided by the square root of G j C inverse G j transpose plus epsilon."><math display="block"><mrow><mo>Δ</mo><msub><mi>W</mi><mi>j</mi></msub><mo>=</mo><mo>−</mo><mi>η</mi><mfrac><mrow><msub><mi>G</mi><mi>j</mi></msub><msup><mi>C</mi><mrow><mo>−</mo><mn>1</mn></mrow></msup></mrow><mrow><msqrt><mrow><msub><mi>G</mi><mi>j</mi></msub><msup><mi>C</mi><mrow><mo>−</mo><mn>1</mn></mrow></msup><msup><msub><mi>G</mi><mi>j</mi></msub><mrow><mo>⊤</mo></mrow></msup></mrow></msqrt><mo>+</mo><mi>ε</mi></mrow></mfrac></mrow></math></div>
+          <p>Here <math display="inline" class="inline-math"><mrow><mi>η</mi></mrow></math> is the learning rate, <math display="inline" class="inline-math"><mrow><mi>ε</mi></mrow></math> is a small numerical guard, and row <math display="inline" class="inline-math"><mrow><mi>j</mi></mrow></math> produces one output coordinate. Add these row updates to <math display="inline" class="inline-math"><mrow><mi>W</mi></mrow></math>.</p>
+          </div>
+          <p>Read the rule in two pieces. Multiplying by <math display="inline" class="inline-math"><mrow><msup><mi>C</mi><mrow><mo>−</mo><mn>1</mn></mrow></msup></mrow></math> adjusts for input scales and correlations. The denominator sets each row’s root-mean-square output change, <math display="inline" class="inline-math"><mrow><msqrt><mrow><mo>Δ</mo><msub><mi>W</mi><mi>j</mi></msub><mi>C</mi><msup><mrow><mo>Δ</mo><msub><mi>W</mi><mi>j</mi></msub></mrow><mrow><mo>⊤</mo></mrow></msup></mrow></msqrt></mrow></math>, to approximately <math display="inline" class="inline-math"><mrow><mi>η</mi></mrow></math> for a nonzero gradient and negligible <math display="inline" class="inline-math"><mrow><mi>ε</mi></mrow></math>. This is the matrix version of choosing a smaller weight change when the input is larger.</p>
+          <details class="evidence"><summary>From this formula to a training optimizer <span class="disclosure-plus" aria-hidden="true">+</span></summary><div class="evidence-body">
+          <p>The implementation smooths gradients and input second moments with exponential moving averages, uses a numerically stabilized approximate inverse, and applies decoupled weight decay. The formula above isolates the geometry of one step. The longer runs below use this row-wise update family for the transformer matrices, token embeddings, and output head.</p>
+          </div></details>
+          <p>Now we can place the two choices in order. LARE sets how knowledge and reasoning examples contribute to the gradient <math display="inline" class="inline-math"><mrow><mi>G</mi></mrow></math>. ActGD uses the layer’s inputs to turn <math display="inline" class="inline-math"><mrow><mi>G</mi></mrow></math> into a parameter change. We can choose the loss weights and the optimizer together, then check what the model actually learned.</p>
+          </section>
+
+        <section id="replication" aria-labelledby="replication-heading">
+          <h2 id="replication-heading"><span class="section-number">07</span> Which balance of abilities do you want?</h2>
+          <p>After choosing how to form a gradient and how to take a step, return to the question we started with: what should the model be good at? How much reasoning performance do we want relative to broad knowledge?</p>
+          <p>Pick one optimizer row below: AdamW, Muon, or ActGD. Within that row, the update rule stays fixed. Each cell compares equal loss weights with LARE at the same data mix and budget; moving across columns changes the mix. This lets us ask what loss weighting adds when the optimizer has already been chosen.</p>
+          <p>Start with the reasoning scores. Then switch to knowledge. Does improving one ability always cost some of the other, or does the answer depend on the data mix?</p>
+          <figure class="interactive-figure replication-study" id="optimizer-grid">
+            <h3>One comparison per optimizer and data ratio</h3>
+            <div class="experiment-select">
+              <label for="replication-metric">Benchmark shown in the grid</label>
+              <select id="replication-metric"><option value="gsm8k">GSM8K</option><option value="mmlu">MMLU</option></select>
+            </div>
+            <p class="figure-intro">Select a cell to see its direct-mixture and LARE scores.</p>
+            <input type="hidden" id="replication-case" value="Muon-7">
+            <table class="data-table study-matrix">
+              <caption>LARE gain over direct mixing (percentage points)</caption>
+              <thead><tr><th scope="col">Optimizer</th><th scope="col">7:1</th><th scope="col">3:1</th><th scope="col">1:1</th></tr></thead>
+              <tbody id="replication-grid"></tbody>
+            </table>
+            <div class="study-readouts" aria-live="polite">
+              <span id="replication-setting">Muon · 7:1 · GSM8K</span>
+              <span>Direct mixture <strong id="replication-direct">27.67</strong></span>
+              <span>LARE <strong id="replication-lare">39.80</strong></span>
+            </div>
+            <figcaption>Figure 7 | Reasoning performance improves in all nine comparisons. Knowledge performance improves at 7:1 but drops at 1:1 under each optimizer. Automatic weights help use a mixture, while the mixture still shapes the balance between abilities.</figcaption>
+          </figure>
+          <p>For example, at 1:1 with ActGD, the reasoning gain on GSM8K is 4.85 percentage points and the MMLU change is −0.94. That may be a useful exchange for a model built to solve problems. It may be undesirable for one whose main job is broad knowledge recall.</p>
+          <p>This is why the data mixture remains a meaningful design choice even after adding an adaptive rule. The weight helps determine what the model learns from the available stream. It cannot choose your priorities for you.</p>
+        </section>
+
+        <section id="scaling" aria-labelledby="scaling-heading">
+          <h2 id="scaling-heading"><span class="section-number">08</span> Does the benefit grow with model size?</h2>
+          <p>So far, we have asked how to learn more reasoning from a fixed training stream. Now change the size of the learner. As models get larger, does adjusting the loss weights still make a difference? The useful comparison is the extra gain from reweighting at each size.</p>
+          <p>Train models with 124M, 350M, and 774M parameters on 2.52B, 7.08B, and 15.73B tokens, respectively. At each size, compare direct mixing with LARE using the same data stream, the same 7:1 knowledge-to-reasoning mix, and the same optimizer settings. Within each pair, only the loss weighting changes.</p>
+          <p class="scaling-scroll-hint">Scroll to compare both capabilities →</p>
+          <div class="data-scroll scaling-results" role="region" aria-labelledby="scaling-table-caption" tabindex="0">
+            <table class="data-table scaling-table">
+              <caption id="scaling-table-caption">Direct mixing vs. LARE. Accuracy is shown in percent; Δ is the GSM8K change in percentage points.</caption>
+              <colgroup span="1"></colgroup><colgroup span="3"></colgroup><colgroup span="2"></colgroup>
+              <thead>
+                <tr><th scope="col" rowspan="2">Model<small>Training tokens</small></th><th scope="colgroup" colspan="3">Reasoning · GSM8K</th><th scope="colgroup" colspan="2">Knowledge · MMLU</th></tr>
+                <tr><th scope="col">Direct mixture</th><th scope="col">LARE</th><th scope="col">Δ (pp)</th><th scope="col">Direct mixture</th><th scope="col">LARE</th></tr>
+              </thead>
+              <tbody>
+                <tr><th scope="row">124M<small>2.52B tokens</small></th><td>2.73</td><td>1.67</td><td class="scaling-decrease">−1.06</td><td>27.64</td><td>27.70</td></tr>
+                <tr><th scope="row">350M<small>7.08B tokens</small></th><td>3.18</td><td>5.08</td><td class="scaling-increase">+1.90</td><td>28.69</td><td>27.87</td></tr>
+                <tr><th scope="row">774M<small>15.73B tokens</small></th><td>11.37</td><td>18.73</td><td class="scaling-increase">+7.36</td><td>30.28</td><td>30.30</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>Read the gain column first. At 124M, reweighting does not help GSM8K. At 350M, it adds 1.90 percentage points, with a small knowledge cost. At 774M, the reasoning gain reaches 7.36 points while the knowledge score is almost unchanged.</p>
+          <p>Across these three settings, the reasoning gain from reweighting grows as the model and training budget increase. Both increase together here, so this is a trend across joint scaling, rather than an isolated effect of parameter count. The comparison within each size still asks our original question: what more can this model learn from the same data?</p>
+          <p>When scaling up a training run, revisit how the loss weights balance knowledge and reasoning. In these experiments, the weighting choice matters most at the largest of the three budgets. A recipe chosen on a small model may miss that opportunity.</p>
+        </section>
+
+        <section id="results" aria-labelledby="results-heading">
+          <h2 id="results-heading"><span class="section-number">09</span> Three subjects, one training run</h2>
+          <p>The same idea extends naturally to more data sources. Add code alongside knowledge text and worked math solutions, and keep a separate smoothed loss for each source. Each gets its inverse-square-root weight, followed by one shared normalization across all prediction targets.</p>
+          <p>We can then ask whether the balance helps across several kinds of tasks in a longer run. The comparisons below use a roughly 1.5B-parameter model and 120B or 240B training tokens. The three-domain runs allocate text, math, and code in a 7:0.5:0.5 ratio. Within each pair, the examples and training budget are the same.</p>
+          <p>Alongside MMLU and GSM8K, MATH tests more difficult mathematical reasoning. HumanEval and MBPP ask the model to write programs that pass tests, adding another view of its ability to solve problems.</p>
+          <figure class="interactive-figure results-explorer">
+            <h3>Compare the final scores at 120B and 240B tokens</h3>
+            <div class="experiment-select"><label for="experiment">Training configuration</label><select id="experiment"><option value="kmc240" selected>240B tokens · knowledge + reasoning + code</option><option value="kmc120">120B tokens · knowledge + reasoning + code</option><option value="km120">120B tokens · knowledge + reasoning</option></select></div>
+            <div class="chart-legend"><span><i class="legend-baseline"></i>Direct mixture</span><span><i class="legend-lare"></i>LARE</span><span class="chart-unit">Accuracy (%) · higher is better</span></div>
+            <div id="benchmark-chart" aria-live="polite" aria-atomic="true"></div>
+            <div class="results-bottom"><span id="result-config">K:R:C = 7:0.5:0.5 · 240B tokens</span><span>Mean gain <strong id="result-average">+7.84 pp</strong></span></div>
+            <details class="evidence results-data"><summary>View exact benchmark scores <span class="disclosure-plus" aria-hidden="true">+</span></summary><div class="evidence-body data-scroll"><table class="data-table"><caption id="results-table-caption">240B-token matched comparison</caption><thead><tr><th scope="col">Benchmark</th><th scope="col">Direct mixture</th><th scope="col">LARE</th><th scope="col">Δ (pp)</th></tr></thead><tbody id="results-table-body"></tbody></table></div></details>
+            <figcaption>Figure 8 | The largest gains are on the mathematical reasoning tests; code scores also improve when code is included. Each pair uses the same data, token budget and optimizer settings. Changing the weights changes what the model learns from that stream.</figcaption>
+          </figure>
+          <noscript><div class="data-scroll"><table class="data-table"><caption>240B tokens · K:R:C = 7:0.5:0.5 · accuracy (%)</caption><thead><tr><th>Benchmark</th><th>Direct</th><th>LARE</th><th>Δ (pp)</th></tr></thead><tbody><tr><th>MMLU</th><td>34.13</td><td>34.96</td><td>+0.83</td></tr><tr><th>GSM8K</th><td>29.72</td><td>46.78</td><td>+17.06</td></tr><tr><th>MATH</th><td>15.80</td><td>24.80</td><td>+9.00</td></tr><tr><th>HumanEval</th><td>17.68</td><td>24.39</td><td>+6.71</td></tr><tr><th>MBPP</th><td>9.80</td><td>15.40</td><td>+5.60</td></tr></tbody></table></div></noscript>
+          <p>At 240B tokens, GSM8K rises from 29.72% to 46.78%, and HumanEval rises from 17.68% to 24.39%. MMLU moves more modestly, from 34.13% to 34.96%. The same training stream has produced a different distribution of capabilities, with gains on all five tests in this comparison.</p>
+          <p>The larger gains are in reasoning and code, even though these examples occupy the smaller shares of the stream. Knowledge and reasoning need not compete at every point. How strongly the examples shape training matters alongside how many of them the model sees.</p>
+
+        </section>
+
+        <section id="scope" aria-labelledby="scope-heading">
+          <h2 id="scope-heading">What to try in your next run</h2>
+          <p>Start with a question you can answer in one controlled comparison: can the current examples teach more if they contribute differently to the update?</p><ol class="training-guidance"><li><p><strong>Choose the abilities you want to keep and improve.</strong> Pick a small set of knowledge and reasoning evaluations before changing the recipe. They make the trade-off visible and give you a reason to prefer one model over another.</p></li><li><p><strong>Change one control at a time.</strong> Keep the data stream, optimizer and token budget fixed while comparing equal weights with a modest increase in reasoning weight. Look for movement up and right. If knowledge falls as reasoning improves, decide whether that exchange fits the model’s job before turning the weight up again.</p></li><li><p><strong>Let losses guide weights; let tasks judge learning.</strong> When separate weight-search runs are too expensive, compare an adaptive rule with a fixed-weight reference. Follow both domain losses and task scores. A lower loss is useful feedback, but solving more problems is the capability you ultimately want.</p></li></ol><p>Choosing the data determines the opportunities to learn. Choosing the objective and the update determines how the model uses those opportunities. That is where the same training data can still have more to teach.</p>
+        </section>
+
+        <section id="citation" class="cite-work" aria-labelledby="citation-heading">
+          <h2 id="citation-heading">Cite this work</h2>
+          <p>If you find this work useful, please cite our paper:</p>
+          <pre id="bibtex-citation" tabindex="0" aria-label="BibTeX"><code id="bibtex">@misc{li2026beyond,
+  title = {Beyond Data Schedule: Fast LLM Pretraining on Data Mixtures by Loss-Reweighting},
+  author = {Jiazheng Li and Huaqing Zhang and Jing Xu and Tianle Cai and Jingzhao Zhang},
+  year = {2026},
+  eprint = {2610.32141},
+  archivePrefix = {arXiv},
+  primaryClass = {cs.LG},
+  url = {https://arxiv.org/abs/2610.32141}
+}</code></pre>
+          <div class="cite-actions"><button id="copy-citation" type="button" hidden>Copy BibTeX</button><span class="cite-status" id="copy-status" role="status" aria-live="polite"></span></div>
+        </section>
+        <div class="article-end"><span aria-hidden="true">✳</span><a href="__BLOG_URL__">Back to the blog ↗</a></div>
+      </article>
+    </div>
+  </main>
+
+  <footer class="site-footer"><div><a href="__BLOG_URL__" class="footer-name">Training Farm</a><p>Methods, experiments, and lessons from training models.</p><p class="footer-credits">Website built by Kairong Luo, Shengqi Chen, and Kaifeng Lyu.</p></div><div class="footer-links"><a href="__BLOG_URL__">Blog</a><a href="__ABOUT_URL__">About Us</a><span>© 2026</span></div></footer>
+</body>
+</html>

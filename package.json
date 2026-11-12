@@ -1,0 +1,17 @@
+{
+  "name": "lare-blog",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "A bilingual interactive blog about learning from mixed training data.",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "check": "node scripts/check-site.mjs",
+    "package": "node scripts/package.mjs",
+    "dev": "node scripts/serve.mjs",
+    "preview": "node scripts/serve.mjs --dist"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

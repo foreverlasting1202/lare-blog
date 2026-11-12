@@ -1,0 +1,11 @@
+dist/
+releases/
+.qa/
+reference-data/
+node_modules/
+.DS_Store
+.env
+.env.*
+animation-data-needed.md
+scripts/import-training-logs.py
+scripts/digitize-figures.py

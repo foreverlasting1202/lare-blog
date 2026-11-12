@@ -1,0 +1,90 @@
+@layer components {
+  :root { --history-km: #378b7c; --history-mk: #567fb4; }
+  :root[data-theme="dark"] { --history-km: #8bc2b4; --history-mk: #9db6dc; }
+  .history-player { margin-top: 34px; }
+  .history-source-badge { color: var(--accent); font-size: 9px; letter-spacing: 0; white-space: nowrap; }
+  .history-run-tabs { margin-top: 23px; }
+  .history-run-tabs button { font-size: 10px; }
+  .history-legend { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 9px; color: var(--muted); margin: 22px 0 24px; }
+  .history-legend > span { display: inline-flex; align-items: center; gap: 6px; }
+  .history-legend i { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
+  .history-km-dot { background: var(--history-km); }
+  .history-mk-dot { background: var(--history-mk); }
+  .history-lare-dot { background: var(--motion-red); }
+  .history-time-svg, .history-plane-svg { touch-action: pan-y; cursor: ew-resize; }
+  .history-warmup-band { fill: var(--surface); opacity: .85; }
+  .history-curve { --history-color: var(--baseline); }
+  .history-km { --history-color: var(--history-km); }
+  .history-mk { --history-color: var(--history-mk); }
+  .history-direct { --history-color: var(--baseline); }
+  .history-fixed2 { --history-color: var(--motion-m); }
+  .history-fixed3 { --history-color: #c69952; }
+  .history-fixed4 { --history-color: #b9a45d; }
+  .history-fixed7 { --history-color: #a99a71; }
+  .history-lare { --history-color: var(--motion-red); }
+  .history-comparison-curve { --history-color: var(--baseline); }
+  .history-ghost { fill: none; stroke: var(--history-color); stroke-width: 1.1; opacity: .14; }
+  .history-revealed { fill: none; stroke: var(--history-color); stroke-width: 1.5; opacity: .5; stroke-linecap: round; stroke-linejoin: round; }
+  .history-selected .history-revealed { stroke-width: 2.5; opacity: 1; }
+  .history-comparison-curve .history-revealed { stroke-width: 1.8; opacity: .8; }
+  .history-current-marker { fill: var(--history-color); stroke: var(--paper); stroke-width: 1.8; }
+  .history-cursor-line { stroke: var(--accent); stroke-width: .8; }
+  .history-cursor-band { fill: var(--accent); opacity: .08; }
+  .history-boundary { stroke: var(--muted); stroke-width: .8; stroke-dasharray: 4 5; opacity: .6; }
+  .history-boundary-label { fill: var(--muted); font: 10px var(--sans); paint-order: stroke; stroke: var(--paper); stroke-width: 4px; stroke-linejoin: round; }
+  .history-weight-reference { fill: none; stroke: var(--motion-m); stroke-width: 1; stroke-dasharray: 4 5; opacity: .6; }
+  .history-ratio-references text { font-size: 9px; }
+  .history-readouts { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 18px; border-block: 1px solid var(--line); padding: 17px 0; }
+  .history-readouts-three { grid-template-columns: 1fr 1fr 1fr; }
+  .history-readouts > div { display: flex; flex-direction: column; gap: 7px; }
+  .history-readouts span { font-size: 9px; color: var(--muted); }
+  .history-readouts strong { font: 400 27px/1.3 var(--serif); color: var(--accent); font-variant-numeric: tabular-nums; }
+  .history-readouts small { font-size: 9px; color: var(--muted); }
+  .history-player .history-published { font-size: 10px; color: var(--muted); margin: 12px 0 0; line-height: 1.9; }
+  .history-phase { font: 10px/1.9 var(--sans); color: var(--accent); margin: 15px 0 0; }
+  .history-player .history-checkpoint { font: 9px/1.8 var(--mono); color: var(--muted); margin: 7px 0 0; }
+  .history-plane-details { border-top: 1px solid var(--line); margin-top: 22px; padding-top: 12px; }
+  .history-plane-details > summary { list-style: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: 15px; font: 10px/1.8 var(--sans); color: var(--accent); }
+  .history-plane-details > summary::-webkit-details-marker { display: none; }
+  .history-plane-details > summary > span { font-size: 15px; }
+  .history-plane-svg { margin-top: 27px; }
+  .history-plane-details p { font-size: 9px; color: var(--muted); margin-top: 9px; }
+  .history-plane-ghost { fill: none; stroke: var(--history-color); opacity: .15; stroke-width: 1; }
+  .history-plane-trace { fill: none; stroke: var(--history-color); stroke-width: 2; stroke-linejoin: round; }
+  .history-plane-halo { fill: var(--paper); fill-opacity: .6; stroke: var(--history-color); stroke-width: .9; }
+  .history-plane-dot { fill: var(--history-color); stroke: var(--paper); stroke-width: 1.5; }
+  .history-comparison { display: flex; align-items: end; gap: 25px; justify-content: space-between; margin: 22px 0 31px; }
+  .history-comparison > label { display: flex; flex-direction: column; gap: 7px; font: 9px/1.8 var(--sans); color: var(--muted); }
+  .history-comparison select { border: 1px solid var(--line); background: var(--paper); padding: 7px 10px; font-size: 10px; color: var(--ink); border-radius: 0; }
+  .history-comparison .history-legend { margin: 0 0 8px; gap: 15px; }
+  .history-player .history-discrepancy { border-left: 1px solid var(--math); padding-left: 10px; margin-top: 10px; }
+  .history-player figcaption a { color: var(--muted); text-decoration: none; }
+}
+@layer responsive {
+  @media (max-width: 600px) {
+    .history-player { padding-inline: 13px; }
+    .history-run-tabs button { font-size: 9px; padding-inline: 5px; }
+    .history-legend { gap: 6px 13px; font-size: 8px; margin-bottom: 24px; }
+    .history-readouts { gap: 12px; }
+    .history-readouts strong { font-size: 25px; }
+    .history-readouts span, .history-readouts small { font-size: 8px; }
+    .history-readouts-three strong { font-size: 23px; }
+    .history-readouts-three small { font-size: 7px; }
+    .history-player .history-published { font-size: 9px; }
+    .history-phase { font-size: 9px; }
+    .history-player .history-checkpoint { font-size: 8px; }
+    .history-comparison { gap: 13px; }
+    .history-comparison .history-legend { gap: 7px; font-size: 8px; }
+    .history-comparison select { font-size: 9px; }
+    .history-panel-title { font-size: 19px !important; }
+    .history-boundary-label { font-size: 16px; }
+    .history-ratio-references text { font-size: 14px; }
+    .history-source-badge { font-size: 8px; }
+    .history-plane-details > summary { font-size: 9px; }
+  }
+  @media print {
+    .history-source-badge { color: inherit; }
+    .history-curve .history-ghost { opacity: .7; }
+    .history-player .playback-controls { display: none; }
+  }
+}
