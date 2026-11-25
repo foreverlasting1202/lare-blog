@@ -11,6 +11,8 @@ const root = fileURLToPath(new URL('../', import.meta.url));
 const destination = path.join(root, 'dist');
 const seriesPath = path.join(root, 'public/figures/paper-series.json');
 const paperSeries = JSON.parse(await readFile(seriesPath, 'utf8'));
+const lossAccuracyPath = path.join(root, 'public/figures/loss-accuracy-240b.json');
+const lossAccuracy = JSON.parse(await readFile(lossAccuracyPath, 'utf8'));
 const mixturePilots = ['math-rich-pilot', 'low-math-pilot'];
 for (const name of ['april-pilot', 'domain-gradient-norm', ...mixturePilots]) {
   const file = path.join(root, 'public/figures', name + '.json');
@@ -76,13 +78,14 @@ const relative = (file, target) => {
   return result.startsWith('.') ? result : `./${result}`;
 };
 function page(html, file, language, kind = 'article') {
-  html = populateArticle(html, articles[language], kind === 'article');
+  html = populateArticle(html, articles[language], kind === 'article').replaceAll('__FIGURE_LANG__', language);
   html = html.replace(/<!-- chart-title:([\w-]+) -->/g, (_, plot) => chartConfig[plot].title[language]);
   const article = language === 'en' ? 'en/blog/lare/index.html' : 'blog/lare/index.html';
   const blog = language === 'en' ? 'en/blog/index.html' : 'blog/index.html';
   const zh = kind === 'article' ? 'blog/lare/index.html' : 'blog/index.html';
   const en = kind === 'article' ? 'en/blog/lare/index.html' : 'en/blog/index.html';
-  html = html.replace(/\b(src|href|data-zoom)="\.\/([^"#]+)"/g, (_, attr, target) => `${attr}="${relative(file, target)}"`)
+  html = html.replace(/\bsrcset="\.\/([^",\s]+)"/g, (_, target) => `srcset="${relative(file, target)}"`)
+    .replace(/\b(src|href|data-zoom)="\.\/([^"#]+)"/g, (_, attr, target) => `${attr}="${relative(file, target)}"`)
     .replaceAll('__BLOG_URL__', relative(file, blog)).replaceAll('__ARTICLE_URL__', relative(file, article))
     .replaceAll('__ABOUT_URL__', language === 'en' ? 'https://training.farm/en/about/' : 'https://training.farm/about/')
     .replaceAll('__ZH_URL__', relative(file, zh)).replaceAll('__EN_URL__', relative(file, en))
@@ -100,8 +103,8 @@ const articleSubtitle = source.match(/<p class="article-subtitle">(.*?)<\/p>/)[1
 const articleDate = source.match(/<time datetime="[^"]+">[^<]+<\/time>/)[0];
 const head = source.slice(0, source.indexOf('<body>'))
   .replace(/<link rel="stylesheet" href="\.\/math\/katex.min.css">\s*/, '')
-  .replace(/<link rel="stylesheet" href="\.\/(?:remix-frontier|lare-dynamics)\.css">\s*/g, '')
-  .replace(/<script src="\.\/(?:app|animations|studies|paper-series|paper-playback|quadratic-frontier|remix-frontier|lare-dynamics)\.js" defer><\/script>\s*/g, '')
+  .replace(/<link rel="stylesheet" href="\.\/(?:remix-frontier|lare-dynamics|loss-accuracy-plot)\.css">\s*/g, '')
+  .replace(/<script src="\.\/(?:app|animations|studies|paper-series|paper-playback|quadratic-frontier|remix-frontier|lare-dynamics|loss-accuracy-plot|loss-accuracy-player)\.js" defer><\/script>\s*/g, '')
   .replace(/<title>.*?<\/title>/, '<title>Blog · Training Farm</title>');
 const index = `${head}<body>${header}
 <main id="main" class="blog-index"><div class="index-heading"><p class="eyebrow">TRAINING FARM</p><h1>Blog</h1><p>Methods, experiments, and lessons from training models.</p></div>
@@ -126,7 +129,7 @@ await cp(path.join(katexRoot, 'LICENSE'), path.join(mathAssets, 'LICENSE'));
 const logReplay = path.join(root, 'public', 'data', 'training-history.js');
 await cp(path.join(root, 'public'), destination, {
   recursive:true,
-  filter:file => file !== logReplay && file !== seriesPath,
+  filter:file => file !== logReplay && file !== seriesPath && file !== lossAccuracyPath,
 });
 for (const file of await readdir(path.join(root, 'src'))) {
   if (['index.html', 'i18n.js', 'locales', 'history.js', 'history.css'].includes(file)) continue;
@@ -138,6 +141,7 @@ await writeFile(path.join(destination, 'paper-series.js'), [
   `window.LARE_PAPER_SERIES=${JSON.stringify(Object.fromEntries(Object.keys(chartConfig).map(key => [key, paperSeries[key]])))};`,
   `window.LARE_PAPER_CHARTS=${JSON.stringify(chartConfig)};`,
   `window.LARE_PAPER_STYLES=${JSON.stringify(seriesStyles)};`,
+  `window.LARE_LOSS_ACCURACY=${JSON.stringify(lossAccuracy)};`,
 ].join('\n'));
 for (const [file, language, template, kind] of pages) {
   const html = page(template, file, language, kind);

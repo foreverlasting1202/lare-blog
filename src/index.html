@@ -23,6 +23,7 @@
   <link rel="stylesheet" href="./quadratic-frontier.css">
   <link rel="stylesheet" href="./remix-frontier.css">
   <link rel="stylesheet" href="./lare-dynamics.css">
+  <link rel="stylesheet" href="./loss-accuracy-plot.css">
   <link rel="stylesheet" href="./group-animation.css">
   <script src="./theme.js" defer></script>
   <script src="./i18n.js" defer data-lare-i18n></script>
@@ -34,6 +35,8 @@
   <script src="./quadratic-frontier.js" defer></script>
   <script src="./remix-frontier.js" defer></script>
   <script src="./lare-dynamics.js" defer></script>
+  <script src="./loss-accuracy-plot.js" defer></script>
+  <script src="./loss-accuracy-player.js" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to article</a>
@@ -476,6 +479,32 @@
 
 <template data-figure="group-curves">
 <figure class="research-figure"><img data-paper-chart="grouping-trajectories" src="./figures/grouping-trajectories.png" alt="Direct mixing versus LARE with three domains, six loss groups and eighteen sources." width="2200" height="677" loading="lazy" decoding="async"><figcaption><span class="figure-number">Figure 11</span> All four models see the same 32.71B tokens. Grouping sources by similar loss gives the highest final scores on both MMLU and GSM8K.</figcaption></figure>
+</template>
+
+<template data-figure="loss-accuracy-240b">
+<figure class="research-figure" id="loss-accuracy-figure">
+  <div class="paper-chart" data-loss-player hidden>
+    <div class="paper-chart-header"><div class="paper-chart-heading">
+      <span class="paper-chart-kicker">Figure 12</span>
+      <h3 class="paper-chart-title">How far apart are the models after 240B tokens?</h3>
+    </div></div>
+    <div class="dyn-ylabel">1.5B parameters · knowledge, math and code at 14∶1∶1 · ActGD</div>
+    <div class="dyn-grid">
+      <svg data-loss-panel="math"></svg>
+      <svg data-loss-panel="knowledge"></svg>
+    </div>
+    <div class="dyn-controls">
+      <button type="button" class="dyn-play">Replay</button>
+      <input type="range" class="dyn-slider" id="loss-accuracy-checkpoint" min="1" step="1" aria-label="Training checkpoint">
+      <span class="dyn-progress" aria-hidden="true"></span>
+    </div>
+  </div>
+  <picture class="dyn-original">
+    <source media="(max-width: 640px)" srcset="./figures/loss-accuracy-240b-__FIGURE_LANG__-mobile.png" width="971" height="1480">
+    <img src="./figures/loss-accuracy-240b-__FIGURE_LANG__.png" width="2275" height="1084" loading="lazy" decoding="async" alt="At 240B tokens, LARE reaches a lower math validation loss and a higher GSM8K score. The final knowledge losses nearly coincide, with LARE slightly higher on MMLU.">
+  </picture>
+  <figcaption><span class="figure-number">Figure 12</span> Each point pairs a domain validation loss with zero-shot accuracy. The dashed lines mark each model’s loss at the selected step.</figcaption>
+</figure>
 </template>
 
 <section id="citation" class="cite-work" aria-labelledby="citation-heading">

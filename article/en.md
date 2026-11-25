@@ -197,6 +197,16 @@ With unit weights the model reached 14.25% on GSM8K. Three domain weights gave 2
 
 On the same 32.71B-token stream, grouping by loss reached 32.74% on MMLU and 24.03% on GSM8K. Those are gains of 0.54 and 1.06 percentage points over the three semantic domains. Six weights gave the best pair of scores among the four partitions tested.
 
+## Extra: How does validation loss relate to accuracy? {#loss-accuracy}
+
+When we compared the two 240B-token runs, we asked how many questions each model could answer after seeing the same amount of data. What if we compared them at nearly the same math validation loss instead? Would they solve the same share of GSM8K problems? Each point below pairs a validation loss with the benchmark score measured at the same training step. Loss decreases to the right.
+
+<!-- figure:loss-accuracy-240b -->
+
+For math, take the point from each run closest to a validation loss of 0.41. At step 144,000, LARE had a loss of 0.4102 and solved 31.84% of GSM8K. At step 338,000, direct mixing had a loss of 0.4101 and solved 28.51%. The two dashed lines show where the models ended up after 240B tokens. Direct mixing finished at a math loss of 0.4014. LARE reached 0.3592, by which point the gap on GSM8K was 17.06 percentage points.
+
+For knowledge, the dashed lines almost coincide. Direct mixing finished with a slightly lower knowledge loss, 2.3625 against 2.3681 for LARE, yet LARE scored 0.83 percentage points higher on MMLU. Over the course of training, lower knowledge loss generally went along with more correct answers. If we had used validation loss alone to pick the better of the two final models for MMLU, we would have picked the wrong one.
+
 ## Conclusion {#conclusion}
 
 When GSM8K barely moved in our first run, we wondered whether our 1.5B model could learn to solve math problems if it saw more of them. The math-heavy runs answered that question. Pretraining alone was enough for the model to solve a substantial share of the word problems. The harder part was improving math while retaining knowledge. Saving math for the last stage raised GSM8K, but MMLU fell. Mixing both domains throughout training left the model between the two stage orders on both benchmarks.

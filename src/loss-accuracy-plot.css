@@ -1,0 +1,26 @@
+.loss-accuracy-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  min-width: 0;
+  overflow: visible;
+  --loss-direct: light-dark(#526f91, #abc8e6);
+  --loss-lare: light-dark(#087e73, #7addcd);
+}
+.loss-accuracy-svg text {
+  font: 11px/1 var(--sans);
+  fill: var(--chart-caption);
+  font-variant-numeric: tabular-nums;
+}
+.loss-accuracy-svg .la-heading { fill: var(--chart-ink); font-size: 13.5px; font-weight: 650; }
+.loss-accuracy-svg .la-difference { fill: var(--loss-lare); font-size: 11.5px; font-weight: 650; }
+.loss-accuracy-svg .la-x-label { font-size: 11.5px; }
+.loss-accuracy-svg .la-direct { color: var(--loss-direct); fill: currentColor; }
+.loss-accuracy-svg .la-lare { color: var(--loss-lare); fill: currentColor; }
+.loss-accuracy-svg :is(.la-method, .la-values) { fill: currentColor; font-size: 11.5px; }
+.loss-accuracy-svg .la-method { font-weight: 600; }
+.loss-accuracy-svg .la-grid { stroke: var(--chart-grid); stroke-width: .7px; }
+.loss-accuracy-svg .la-axis { stroke: var(--chart-edge); }
+.loss-accuracy-svg .la-dots circle { opacity: .37; }
+.loss-accuracy-svg .la-guide { stroke: currentColor; stroke-width: 1.15px; stroke-dasharray: 3.3 2.6; }
+.loss-accuracy-svg .la-head { stroke: var(--chart-paper); stroke-width: 1.2px; }

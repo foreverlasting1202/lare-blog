@@ -53,7 +53,8 @@ export function populateArticle(html, article, isArticle) {
     return '';
   });
   const contents = [];
-  const sections = article.sections.map(({title, id, blocks}, index) => {
+  let sectionNumber = 0;
+  const sections = article.sections.map(({title, id, blocks}) => {
     const summary = id === 'tldr';
     const heading = escape(title);
     contents.push('<a href="#' + id + '"' + (summary ? ' aria-current="location"' : '') + '>' + heading + '</a>');
@@ -77,7 +78,7 @@ export function populateArticle(html, article, isArticle) {
       if (block.startsWith('> ')) return '<aside class="record-pending"><p>' + inline(block.slice(2)) + '</p></aside>';
       return '<p>' + inline(block) + '</p>';
     });
-    const number = summary ? '' : '<span class="section-number">' + index + '</span> ';
+    const number = summary || title.startsWith('Extra: ') ? '' : '<span class="section-number">' + (++sectionNumber) + '</span> ';
     return '<section id="' + id + '" class="' + (summary ? 'article-summary' : 'story-section') + '" aria-labelledby="' + id + '-heading">\n<h2 id="' + id + '-heading">' + number + heading + '</h2>\n' + body.join('\n') + '\n</section>';
   });
   if (figures.size) throw new Error('Unplaced figures: ' + [...figures.keys()].join(', '));
