@@ -26,6 +26,8 @@ jobs:
         with:
           node-version: '24'
           package-manager-cache: false
+      - name: Install build dependencies
+        run: npm ci
       - name: Build both languages and validate the static site
         run: npm run build
       - name: Upload the Pages artifact

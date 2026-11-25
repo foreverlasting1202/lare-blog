@@ -1,0 +1,41 @@
+.rf-chart { --rf-direct: var(--paper-trace-slate); --rf-seven: var(--paper-trace-amber); --rf-three: var(--paper-trace-coral); }
+.rf-replay[hidden], .rf-reading[hidden] { display: none; }
+.rf-legend { display: flex; flex-wrap: wrap; gap: 5px 20px; margin: 17px 0 14px; color: var(--chart-caption); font: 12px/1.5 var(--sans); }
+.rf-legend span { display: inline-flex; align-items: center; gap: 7px; }
+.rf-direct { color: var(--rf-direct); }
+.rf-seven { color: var(--rf-seven); }
+.rf-three { color: var(--rf-three); }
+.rf-legend i { position: relative; width: 22px; border-top: 2px solid; }
+.rf-legend i.rf-three { border-top-style: dashed; }
+.rf-legend i::after { content: ''; position: absolute; left: 8px; top: -4px; width: 7px; height: 7px; box-sizing: border-box; border: 2px solid; border-radius: 50%; background: var(--chart-paper); }
+.rf-legend i.rf-direct::after { border-radius: 0; }
+.rf-legend i.rf-seven::after { background: currentColor; }
+.rf-xaxis, .rf-yaxis { color: var(--chart-caption); font: 600 11px/1.45 var(--sans); }
+.rf-yaxis { margin-bottom: 6px; }
+.rf-xaxis { margin-top: 23px; margin-left: 36px; text-align: center; }
+.rf-field { margin: 0 10px 0 42px; }
+.rf-plot { display: block; width: 100%; height: clamp(205px, 33vw, 295px); overflow: visible; border: 1px solid var(--chart-grid); background: var(--chart-face); font-family: var(--sans); }
+.rf-tick { fill: var(--chart-caption); font: 10px var(--mono), var(--sans); }
+.rf-grid { stroke: var(--chart-grid); stroke-width: 0.8; }
+.rf-segment { stroke: currentColor; stroke-width: 2.15; fill: none; }
+.rf-segment.rf-three { stroke-dasharray: 6 4; }
+.rf-marker { overflow: visible; }
+.rf-marker text { fill: currentColor; font: 650 11px var(--sans); paint-order: stroke; stroke: var(--chart-face); stroke-width: 3px; stroke-linejoin: round; }
+.rf-marker > rect, .rf-marker > circle:not(.rf-target) { stroke: currentColor; fill: var(--chart-face); stroke-width: 2.2px; }
+.rf-seven > circle:not(.rf-target) { fill: currentColor; }
+.rf-target { fill: transparent; stroke: none; }
+.rf-marker[role="button"] { cursor: pointer; outline: none; }
+.rf-marker:is(:focus-visible, [aria-pressed="true"]) > .rf-target { stroke: currentColor; stroke-width: 1.1px; }
+.rf-reading { margin: 12px 0 0; min-height: 1.6em; color: var(--chart-caption); font: 12px/1.6 var(--sans); font-variant-numeric: tabular-nums; }
+@media (max-width: 600px) {
+  .rf-legend { column-gap: 12px; }
+  .rf-field { margin-left: 39px; margin-right: 7px; }
+  .rf-marker text { font-size: 10px; }
+}
+@media print {
+  #remix-frontier { break-inside: avoid; }
+  #remix-frontier .rf-chart { display: block !important; }
+  .rf-replay, .rf-reading { display: none !important; }
+  .rf-plot { height: 210px; }
+}
+@media (prefers-reduced-motion: reduce) { .rf-replay { display: none !important; } }

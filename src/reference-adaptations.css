@@ -19,39 +19,48 @@ html[lang="zh-CN"] .article-header h1 { font-family:var(--sans); }
 .article-toc nav a[aria-current]::before { display:none; }
 .toc-footer { display:none; }
 .article-prose p { margin:0 0 1.4em; }
+.article-prose .katex { font-size:1em; }
+/* Keep closing punctuation with a short inline formula at a Chinese line break. */
+.math-with-punctuation { display:inline-block;max-inline-size:100%; }
+.article-prose .katex-display {
+  max-width:100%;
+  margin:.75em 0;
+  overflow-x:auto;
+  scrollbar-width:thin;
+}
+.article-prose .katex-display > .katex { width:max-content;margin-inline:auto;font-size:var(--fitted-math-size, 1em); }
 .explained-equation {
-  margin:28px 0;
-  padding:20px 0 8px;
+  margin:1.4em 0;
+  padding:.75em 0;
   border-block:1px solid var(--line);
 }
 .explained-equation .math-line {
   max-width:100%;
-  overflow-x:auto;
-  padding:10px 4px 14px;
-  margin:0 0 10px;
-  color:var(--accent);
+  color:var(--ink);
 }
-.article-prose math { font-family:"STIX Two Math","STIXGeneral","Cambria Math",math; }
-.article-prose .inline-math { font-size:1em;font-weight:400;margin-inline:.06em; }
-.explained-equation math[display="block"] { min-width:max-content;font-size:24px;margin:0; }
+.math-line .katex-display { margin:0;padding:.35em 0; }
 .article-prose .explained-equation > p {
   margin:0 0 16px;
   font:15px/1.85 var(--sans);
 }
 .article-prose .explained-equation > .equation-label {
-  margin:0 0 5px;
+  margin:0 0 .2em;
   color:var(--muted);
   font:600 13px/1.7 var(--sans);
 }
-.equation-key { margin:4px 0 18px;font:14px/1.8 var(--sans); }
-.equation-key > div { display:grid;grid-template-columns:42px minmax(0,1fr);gap:12px;margin:8px 0; }
-.equation-key dt { color:var(--accent); }
-.equation-key dt math { font-size:19px; }
+.article-prose .math-line + .equation-label { margin-top:.8em; }
+.equation-key { margin:.65em 0;font:14px/1.8 var(--sans); }
+.equation-key > div { display:grid;grid-template-columns:2em minmax(0,1fr);gap:.6em;margin:.25em 0; }
+.equation-key dt { color:var(--ink);font-size:16px; }
 .equation-key dd { margin:0; }
 @media (width<=600px) {
-  .explained-equation { margin:23px 0;padding-top:17px; }
-  .explained-equation math[display="block"] { font-size:20px; }
   .article-prose .explained-equation > p { font-size:14px; }
+}
+@media print {
+  .explained-equation { break-inside:avoid; }
+  .article-prose .katex { color:#161616; }
+  .article-prose .katex-display { overflow:visible; }
+  .article-prose .katex-display > .katex { font-size:1em; }
 }
 .stage-prediction {
   margin:12px 0 20px;

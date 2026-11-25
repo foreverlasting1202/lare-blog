@@ -1,0 +1,102 @@
+{
+  "figures": [
+    {
+      "file": "quadratic_shared_reachable_set.pdf",
+      "companion_file": "quadratic_pareto_frontiers.pdf",
+      "source_path": "arxiv_version/sections/02_phenomenon/",
+      "source_url": "https://arxiv.org/abs/2610.32141",
+      "description": "Two-domain Gaussian linear regression, orthogonal 512-dimensional blocks, 128 examples per batch, 20 SGD steps. The two losses are normalized by their respective initial loss.",
+      "transformation": "The article SVGs use the two PDF frontier strokes and the fixed-mixture marker centers in the original 0 to 0.4 axis coordinates. Hovering the frontier reports approximate values linearly interpolated along the displayed vector curves. The linked originals are unmodified."
+    },
+    {
+      "file": "april-pilot.png",
+      "series_file": "april-pilot.json",
+      "source_url": "https://docs.google.com/document/d/1LOsw1kCkT_XWHopT5HgreecLIDU6iz7V1T4qqj-Syuk/edit?tab=t.0#heading=h.lsqmm0qi81p4",
+      "run_url": "https://swanlab.cn/@foreverlasting/agd_qa_pretraining/runs/n4st3m9egcvxewyu7gkiw/chart",
+      "recipe_url": "https://docs.google.com/document/d/1LOsw1kCkT_XWHopT5HgreecLIDU6iz7V1T4qqj-Syuk/edit?tab=t.0#heading=h.71mfyhv3tew4",
+      "recipe": "The author confirmed that this run used the Nemotron data mixture recorded in the notes: 70B tokens each budgeted for web text, web Q&A and math, and 1B each for science and code.",
+      "description": "April pilot. The mmlu_fineweb and GSM8K trajectories are recorded at the same checkpoints up to the last point in the two weekly-report figures.",
+      "transformation": "Matched weekly figures to archived measurements of the same training run. Accuracy fractions converted to percentages and steps to thousands; original checkpoints, no smoothing."
+    },
+    {
+      "file": "domain-gradient-norm.png",
+      "series_file": "domain-gradient-norm.json",
+      "source_url": "https://docs.google.com/document/d/1LOsw1kCkT_XWHopT5HgreecLIDU6iz7V1T4qqj-Syuk/edit?tab=t.0#heading=h.p45g7a7c2w2b",
+      "run_url": "https://swanlab.cn/@foreverlasting/agd_grad_spectra/runs/e82s2puj4ptf9ion5q25b/chart",
+      "source_path": "Activation-Descent/activation-descent/runs/grad_spectra/dumps/grad_spectra.jsonl",
+      "source_sha256": "05c92b124d92a4ae1094bcb7bfc8a3aa13167553efeb8cf116e5162266744fbe",
+      "description": "124M, 2:1 knowledge-to-math mixture. Replot of slide2_per_domain_grad_norms.png in the June 11 training notes.",
+      "transformation": "For each observed domain and capture step, take the Euclidean norm of the 72 logged linear weight Frobenius norms. Use the training dump's step (SwanLab step minus one), displayed in thousands. The dark curves are centered rolling medians of each domain’s own observations (11 for knowledge, 7 for math), with truncated windows at the ends."
+    },
+    {
+      "file": "math-rich-pilot.png",
+      "series_file": "math-rich-pilot.json",
+      "source_url": "https://docs.google.com/document/d/1LOsw1kCkT_XWHopT5HgreecLIDU6iz7V1T4qqj-Syuk/edit?tab=t.0#heading=h.wbnkyhr2fnhe",
+      "description": "Four May 1.5B pretraining runs, labeled by the prepared math-to-Wikipedia recipe. The series file links the four original SwanLab runs.",
+      "transformation": "Zero-shot GSM8K and mmlu_fineweb accuracies converted from fractions to percentages. Time is thousands of training steps. The chart uses the 20 evaluation steps shared across all four recipes and both benchmarks, ending at step 57,000."
+    },
+    {
+      "file": "low-math-pilot.png",
+      "series_file": "low-math-pilot.json",
+      "source_url": "https://swanlab.cn/@foreverlasting/agd_pretrain_check/runs/8wmuij2tww98tfm9ieo3k/chart",
+      "description": "Full-length blue and green runs from the GSM8K screenshot, with companion MMLU evaluations. The series file links both runs, the short mint run and the May 28 recipes.",
+      "transformation": "Measured zero-shot accuracies in percent, with the same 20 checkpoints from 0 through 57,000 as the adjacent four-recipe comparison. No extrapolation or smoothing."
+    },
+    {
+      "file": "alternative-loss-rules.png",
+      "original_file": "alternative-loss-rules.pdf",
+      "source_path": "arxiv_version/sections/97_appendix_ablation/appendix_inverse_loss_training_curves.pdf",
+      "source_url": "https://arxiv.org/abs/2610.32141",
+      "description": "Unsmoothed benchmark trajectories. Relative-decrease controller, not simply reciprocal loss.",
+      "transformation": "First PDF page rendered with Poppler, maximum dimension 2200px. Original PDF included."
+    },
+    {
+      "file": "residual-energy.png",
+      "original_file": "residual-energy.pdf",
+      "source_path": "arxiv_version/sections/97_appendix_ablation/appendix_residual_energy_training_curves.pdf",
+      "source_url": "https://arxiv.org/abs/2610.32141",
+      "description": "Unsmoothed benchmark trajectories for residual-energy weighting.",
+      "transformation": "First PDF page rendered with Poppler, maximum dimension 2200px. Original PDF included."
+    },
+    {
+      "file": "grouping-trajectories.png",
+      "original_file": "grouping-trajectories.pdf",
+      "source_path": "arxiv_version/sections/97_appendix_ablation/appendix_grouping_training_curves.pdf",
+      "source_url": "https://arxiv.org/abs/2610.32141",
+      "description": "Unsmoothed, 32.71B tokens, ActGD, 1.635B, final step62391; single runs.",
+      "transformation": "First PDF page rendered with Poppler, maximum dimension 2200px. Original PDF included."
+    },
+    {
+      "file": "long-training.png",
+      "original_file": "long-training.pdf",
+      "source_path": "arxiv_version/sections/04_experiments/main_training_curves_4x_8x.pdf",
+      "source_url": "https://arxiv.org/abs/2610.32141",
+      "description": "Centered 11-checkpoint moving averages. Endpoint tables remain unsmoothed.",
+      "transformation": "First PDF page rendered with Poppler, maximum dimension 2200px. Original PDF included."
+    },
+    {
+      "file": "matched-schedules.png",
+      "original_file": "matched-schedules.pdf",
+      "source_path": "arxiv_version/sections/02_phenomenon/diagnosis_training_curves_muon_split.pdf",
+      "source_url": "https://arxiv.org/abs/2610.32141",
+      "description": "Stage schedules and fixed reweighting under matched domain exposure.",
+      "transformation": "First PDF page rendered with Poppler, maximum dimension 2200px. Original PDF included."
+    },
+    {
+      "figure_id": "remix-frontier",
+      "source_path": "arxiv_version/sections/02_phenomenon/remix_vs_reweight_muon.pdf",
+      "source_url": "https://arxiv.org/abs/2610.32141",
+      "description": "Paper Figure 2. Final 30B-token Muon checkpoints for three direct mixtures and fixed loss-weight sweeps at 7:1 and 3:1 knowledge-to-math data ratios.",
+      "transformation": "The SVG connects the measured endpoints in the order of the mixture or loss-weight settings. Each point represents a separate run. The paper plots the 7:1 direct endpoint at 31.41% MMLU and 28.66% GSM8K. Its results table reports 31.40% and 27.67%."
+    },
+    {
+      "figure_id": "adaptive-history",
+      "file": "lare-training.png",
+      "original_file": "lare-training.pdf",
+      "source_path": "arxiv_version/sections/03_theory_method/loss_scale_dynamics_muon.pdf",
+      "source_url": "https://arxiv.org/abs/2610.32141",
+      "description": "Paper Figure 5. MMLU, GSM8K, the LARE math-to-knowledge weight ratio and final capability trade-off for the same 7:1 Muon experiment.",
+      "transformation": "The animation uses the published vector curves and the final values plotted in the endpoint panel. The static fallback is a Poppler rendering of the original PDF, which is also included."
+    }
+  ]
+}

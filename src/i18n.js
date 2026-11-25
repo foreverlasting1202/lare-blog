@@ -41,7 +41,7 @@
   if (typeof document === 'undefined') return;
 
   const chinese = document.documentElement.lang === 'zh-CN';
-  const ignored = 'script,style,pre,code,math,[data-no-translate]';
+  const ignored = 'script,style,pre,code,math,.katex,[data-no-translate]';
   const attributes = ['aria-label', 'aria-valuetext', 'title', 'alt', 'data-caption'];
   function localize(root) {
     if (!chinese || !root.isConnected) return;
@@ -80,10 +80,11 @@
   function captureState() {
     const fields = Object.fromEntries([...document.querySelectorAll('input[id], select[id]')].filter(el => el.id !== 'site-theme').map(el => [el.id, el.value]));
     const buttons = Object.fromEntries(buttonGroups.map(group => [group, document.querySelector(`[data-${group}][aria-pressed="true"]`)?.getAttribute(`data-${group}`)]));
-    const sections = [...document.querySelectorAll('.article-header[id], article section[id], article figure[id]')];
+    const sections = [...document.querySelectorAll('.article-header[id], article section[id], article figure[id], article .story-subheading[id]')];
     const header = document.querySelector('.site-header').getBoundingClientRect().height;
     const previous = sections.filter(el => el.getBoundingClientRect().top <= header + 40).at(-1) || sections[0];
-    return { fields, buttons, details:[...document.querySelectorAll('details')].map(el => el.open), adaptive:document.querySelector('#frontier-adaptive')?.getAttribute('aria-pressed') === 'true', anchor:previous?.id || 'top', offset:previous ? previous.getBoundingClientRect().top - header : 0, theme:document.querySelector('[data-theme-select]')?.value };
+    const paperCharts = window.LARE_PAPER_VIEW?.capture();
+    return { fields, buttons, paperCharts, details:[...document.querySelectorAll('details')].map(el => el.open), anchor:previous?.id || 'top', offset:previous ? previous.getBoundingClientRect().top - header : 0, theme:document.querySelector('[data-theme-select]')?.value };
   }
   document.querySelectorAll('[data-language]').forEach(link => link.addEventListener('click', event => {
     if (link.getAttribute('aria-current') === 'page') { event.preventDefault(); return; }
@@ -98,6 +99,7 @@
     if (!encoded) return;
     try {
       const state = JSON.parse(encoded);
+      if (state.paperCharts) window.LARE_PAPER_VIEW?.restore(state.paperCharts);
       document.querySelectorAll('details').forEach((el, index) => { if (state.details?.[index] !== undefined) el.open = state.details[index]; });
       for (const [id, value] of Object.entries(state.fields || {}).filter(([id]) => document.getElementById(id)?.tagName === 'SELECT')) {
         const el = document.getElementById(id); el.value = value; el.dispatchEvent(new Event('change'));
@@ -113,8 +115,6 @@
         const el = [...document.querySelectorAll(`[data-${group}]`)].find(button => button.getAttribute(`data-${group}`) === value);
         if (el) el.click();
       });
-      const adaptive = document.querySelector('#frontier-adaptive');
-      if (adaptive && (adaptive.getAttribute('aria-pressed') === 'true') !== !!state.adaptive) adaptive.click();
       if (state.theme) { const theme = document.querySelector('[data-theme-select]'); theme.value = state.theme; theme.dispatchEvent(new Event('change')); }
       await document.fonts.ready;
       await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
