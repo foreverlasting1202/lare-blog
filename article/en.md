@@ -4,6 +4,8 @@ The first GSM8K curve barely moved. The experiments that followed changed the sh
 
 ## TL;DR {#tldr}
 
+Math accounted for about a third of the data budget in our first 1.5B pretraining run, yet MMLU improved while GSM8K barely moved. Could the model learn more from the same math problems if they carried more weight in each update? In a later experiment, we held the data and sample order fixed and doubled the weight on math loss. Both scores improved. To avoid tuning that weight by hand for each new mixture, we proposed an adaptive weighting method (LARE). On the same 240B-token budget, LARE beat direct mixing by **17.06 percentage points on GSM8K** and 0.83 on MMLU.
+
 ## Can a small model learn to reason better during pretraining? {#overview}
 
 The base-model results in reports such as [OLMo 2](https://arxiv.org/html/2501.00656v3#A2.T22) and [SmolLM3](https://huggingface.co/HuggingFaceTB/SmolLM3-3B-Base#base-pre-trained-model) show room for improvement in math and code. Could a small model get better at reasoning during pretraining itself?
@@ -22,7 +24,11 @@ The first runs made that question seem premature. Training loss came down steadi
 
 The model gradually answered more knowledge questions correctly, while its math score barely moved. Training loss and problem accuracy reward different things. Getting better at completing a phrase like “how many are left?” can lower the average loss. On GSM8K, a mistake in the final calculation still costs the model the whole problem.
 
-Could the answer format explain the result? Adding worked examples to the prompt helped little. That brings the question back to training. The recipe included math problems. How much did they contribute to a parameter update?
+Could the answer format explain the result? Adding worked examples to the prompt helped little.
+
+Perhaps MMLU starts to improve while knowledge validation loss is still fairly high, whereas GSM8K only picks up once math validation loss is much lower. If so, both losses could be falling during mixed training even when the only improvement we see is on knowledge questions.
+
+That brings the question back to training. The recipe included math problems. How much did they contribute to a parameter update?
 
 A later experiment measured this on a 124M model trained on two parts knowledge to one part math. The plot compares the size of each domain’s contribution to a batch gradient, combining its gradients across the model’s linear layers.
 
@@ -199,11 +205,13 @@ On the same 32.71B-token stream, grouping by loss reached 32.74% on MMLU and 24.
 
 ## Extra: How does validation loss relate to accuracy? {#loss-accuracy}
 
-When we compared the two 240B-token runs, we asked how many questions each model could answer after seeing the same amount of data. What if we compared them at nearly the same math validation loss instead? Would they solve the same share of GSM8K problems? Each point below pairs a validation loss with the benchmark score measured at the same training step. Loss decreases to the right.
+Why did MMLU start to rise first when we trained on knowledge and math together? We can revisit that question with the two 240B-token runs. Each point pairs a domain’s validation loss with the benchmark score at the same training step, so we can see when each score began to pick up. Loss decreases to the right.
 
 <!-- figure:loss-accuracy-240b -->
 
-For math, take the point from each run closest to a validation loss of 0.41. At step 144,000, LARE had a loss of 0.4102 and solved 31.84% of GSM8K. At step 338,000, direct mixing had a loss of 0.4101 and solved 28.51%. The two dashed lines show where the models ended up after 240B tokens. Direct mixing finished at a math loss of 0.4014. LARE reached 0.3592, by which point the gap on GSM8K was 17.06 percentage points.
+Take the direct-mixing run. By step 15,000, knowledge validation loss was 2.81 and MMLU had risen from 24.95% to 29.77%. At that same step, math validation loss was already down to 0.646, yet the model solved only 2.35% of GSM8K. By step 60,000, math loss had fallen further to 0.496 and the model solved 13.72%. This gives us one plausible explanation for the early run. We may already see gains on knowledge questions while math loss still has some way to fall before the model solves appreciably more problems.
+
+Now take the point from each run closest to a math validation loss of 0.41. At step 144,000, LARE had a loss of 0.4102 and solved 31.84% of GSM8K. At step 338,000, direct mixing had a loss of 0.4101 and solved 28.51%. The two dashed lines show where the models ended up after 240B tokens. Direct mixing finished at a math loss of 0.4014. LARE reached 0.3592, by which point the gap on GSM8K was 17.06 percentage points.
 
 For knowledge, the dashed lines almost coincide. Direct mixing finished with a slightly lower knowledge loss, 2.3625 against 2.3681 for LARE, yet LARE scored 0.83 percentage points higher on MMLU. Over the course of training, lower knowledge loss generally went along with more correct answers. If we had used validation loss alone to pick the better of the two final models for MMLU, we would have picked the wrong one.
 
